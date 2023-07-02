@@ -1,4 +1,5 @@
 #include <templatebot/templatebot.h>
+#include <config.h>
 #include <sstream>
 #include <fstream>
 #include <filesystem>
@@ -14,7 +15,7 @@ using std::filesystem::remove;
  * scopes 'bot' and 'applications.commands', e.g.
  * https://discord.com/oauth2/authorize?client_id=940762342495518720&scope=bot+applications.commands&permissions=139586816064 */
 
-const string bot_token = "MTEyNDk2Njc5NTkwOTAwNTMyMg.GhBS1F.Qke60jFgRc0QZ8SzobA0xoBahMSEhL-9h2IhTs";
+const string bot_token = TOKEN;
 
 int number_for_guess = 0;
 
