@@ -11,10 +11,6 @@ using std::ios;
 using std::vector;
 using std::filesystem::remove;
 
-/* When you invite the bot, be sure to invite it with the
- * scopes 'bot' and 'applications.commands', e.g.
- * https://discord.com/oauth2/authorize?client_id=940762342495518720&scope=bot+applications.commands&permissions=139586816064 */
-
 const string bot_token = TOKEN;
 
 int number_for_guess = 0;
@@ -34,43 +30,49 @@ int main(int argc, char const *argv[]){
             event.reply("Pong!");
         }
 
+        /* task 1.1 */
         else if (interaction.get_command_name() == "greeting") {
-            /* Fetch a parameter value from the command parameters */
+            /* fetch a parameter value from the command parameters */
             string name = get<string>(event.get_parameter("username"));
-            /* Reply to the command. There is an overloaded version of this
-            * call that accepts a dpp::message so you can send embeds.
-            */
+            /* reply to the command */
             event.reply(string("Hello ") + name);
         }
 
+        /* task 2.1 */
         else if (interaction.get_command_name() == "add") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Add] The result is ") + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
         }
 
+        /* task 2.2 */
         else if (interaction.get_command_name() == "sub") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Sub] The result is ") + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
         }
 
+        /* task 2.3 */
         else if (interaction.get_command_name() == "mul") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Mul] The result is ") + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
         }
 
+        /* task 3.1 */
         else if (interaction.get_command_name() == "reset") {
+            /* set the answer in range [1, 100] */
             number_for_guess = (rand() % 100) + 1;
             // event.reply(to_string(number_for_guess));
         }
 
+        /* task 3.2 */
         else if (interaction.get_command_name() == "guess") {
             int num = stoi(get<string>(event.get_parameter("number_guess")));
             string ret;
             if (num == number_for_guess) {
                 ret = "Bingo!";
+                /* reset the answer if Bingo */
                 number_for_guess = (rand() % 100) + 1;
             }
             else if (num > number_for_guess) ret = "Guess a smaller number!";
@@ -78,6 +80,7 @@ int main(int argc, char const *argv[]){
             event.reply(ret);
         }
 
+        /* task 4.1 */
         else if (interaction.get_command_name() == "write") {
             /* Instantiate an interaction_modal_response object */
             dpp::interaction_modal_response modal("diary", "Please enter your diary");
@@ -92,6 +95,7 @@ int main(int argc, char const *argv[]){
                 set_max_length(8).
                 set_text_style(dpp::text_short)
             );
+            /* add another text component in the next row, as required by discord*/
             modal.add_row();
             modal.add_component(
                 dpp::component().
@@ -114,10 +118,11 @@ int main(int argc, char const *argv[]){
                 set_max_length(2000).
                 set_text_style(dpp::text_paragraph)
             );
-            /* Trigger the dialog box. All dialog boxes are ephemeral */
+            /* trigger the dialog box. all dialog boxes are ephemeral */
             event.dialog(modal);
         }
 
+        /* task 4.2 */
         else if (interaction.get_command_name() == "read") {
             string date = get<string>(event.get_parameter("date"));
             fstream file("diaries/" + date + ".txt", ios::in);
@@ -131,6 +136,7 @@ int main(int argc, char const *argv[]){
                     contents += '\n';
                 }
                 std::cout << "contents: " << contents << '\n';
+                /* create the embed then add it to dpp::message */
                 dpp::embed embed = dpp::embed().
                     set_color(dpp::colors::sti_blue).
                     set_title(title).
@@ -151,16 +157,20 @@ int main(int argc, char const *argv[]){
                 m.add_embed(embed);
                 event.reply(m);
             }else{
+                /* file not opened */
                 event.reply("Diary not found!!!!");
             }
         }
 
+        /* task 4.3 */
         else if (interaction.get_command_name() == "remove") {
             string date = get<string>(event.get_parameter("date")), ret;
             try {
+                /* use std::filesystem to remove */
                 if (remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
                 else ret = "Diary deletion failed :(";
-            }catch(const std::filesystem::filesystem_error& err){
+            }catch(...){
+                /* catch any */
                 ret = "Diary deleted successfully :)";
             }
             event.reply(ret);
@@ -245,17 +255,16 @@ int main(int argc, char const *argv[]){
             bot.global_command_create(dpp::slashcommand("diary", "List command of diary", bot.me.id));
 
             // 1A2B
-            bot.global_command_create(dpp::slashcommand("start_game", "Create a new game", bot.me.id));
+            dpp::slashcommand abgame("1a2b", "1A2B game", bot.me.id);
+            abgame.add_option(dpp::command_option(dpp::co_sub_command, "start", "Start a new game"));
+            abgame.add_option(
+                dpp::command_option(dpp::co_sub_command, "guess", "Send a picture of a cat.").
+                add_option(dpp::command_option(dpp::co_string, "number", "Guess a number without repeating digit", true))
+            );
+            abgame.add_option(dpp::command_option(dpp::co_sub_command, "quit", "Quit the current game"));
+            abgame.add_option(dpp::command_option(dpp::co_sub_command, "scoreboard", "show the scoreboard"));
+            bot.global_command_create(abgame);
 
-            dpp::slashcommand ab_guess("ab_guess", "Guess a 4-digit number", bot.me.id);
-            ab_guess.add_option(dpp::command_option(dpp::co_string, "number", "Guess a number without repeating digit", true));
-            bot.global_command_create(ab_guess);
-
-            bot.global_command_create(dpp::slashcommand("quit", "Quit the current game", bot.me.id));
-
-            bot.global_command_create(dpp::slashcommand("scoreboard", "show the scoreboard", bot.me.id));
-
-            bot.global_command_create(dpp::slashcommand("1a2b", "List command of 1A2B", bot.me.id));
         }
     });
 
