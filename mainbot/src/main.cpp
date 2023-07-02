@@ -246,14 +246,14 @@ int main(int argc, char const *argv[]){
             bot.global_command_create(dpp::slashcommand("start_game", "Create a new game", bot.me.id));
 
             dpp::slashcommand ab_guess("ab_guess", "Guess a 4-digit number", bot.me.id);
-            ab_guess.add_option(dpp::command_option(dpp::co_string, "ab_guess", "Guess a number without repeating digit", true));
+            ab_guess.add_option(dpp::command_option(dpp::co_string, "number", "Guess a number without repeating digit", true));
             bot.global_command_create(ab_guess);
 
             bot.global_command_create(dpp::slashcommand("quit", "Quit the current game", bot.me.id));
 
             bot.global_command_create(dpp::slashcommand("scoreboard", "show the scoreboard", bot.me.id));
 
-            bot.global_command_create(dpp::slashcommand("abgame", "List command of 1A2B", bot.me.id));
+            bot.global_command_create(dpp::slashcommand("1A2B", "List command of 1A2B", bot.me.id));
         }
     });
 
