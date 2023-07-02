@@ -28,11 +28,13 @@ int main(int argc, char const *argv[]){
 
     /* Handle slash command */
     bot.on_slashcommand([](const dpp::slashcommand_t& event) {
-        if (event.command.get_command_name() == "ping") {
+        dpp::interaction interaction = event.command;
+
+        if (interaction.get_command_name() == "ping") {
             event.reply("Pong!");
         }
 
-        else if (event.command.get_command_name() == "greeting") {
+        else if (interaction.get_command_name() == "greeting") {
             /* Fetch a parameter value from the command parameters */
             string name = get<string>(event.get_parameter("username"));
             /* Reply to the command. There is an overloaded version of this
@@ -41,30 +43,30 @@ int main(int argc, char const *argv[]){
             event.reply(string("Hello ") + name);
         }
 
-        else if (event.command.get_command_name() == "add") {
+        else if (interaction.get_command_name() == "add") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Add] The result is ") + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
         }
 
-        else if (event.command.get_command_name() == "sub") {
+        else if (interaction.get_command_name() == "sub") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Sub] The result is ") + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
         }
 
-        else if (event.command.get_command_name() == "mul") {
+        else if (interaction.get_command_name() == "mul") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
             event.reply(string("[Mul] The result is ") + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
         }
 
-        else if (event.command.get_command_name() == "reset") {
+        else if (interaction.get_command_name() == "reset") {
             number_for_guess = (rand() % 100) + 1;
             // event.reply(to_string(number_for_guess));
         }
 
-        else if (event.command.get_command_name() == "guess") {
+        else if (interaction.get_command_name() == "guess") {
             int num = stoi(get<string>(event.get_parameter("number_guess")));
             string ret;
             if (num == number_for_guess) {
@@ -76,7 +78,7 @@ int main(int argc, char const *argv[]){
             event.reply(ret);
         }
 
-        else if (event.command.get_command_name() == "write") {
+        else if (interaction.get_command_name() == "write") {
             /* Instantiate an interaction_modal_response object */
             dpp::interaction_modal_response modal("diary", "Please enter your diary");
             /* Add a text component */
@@ -116,7 +118,7 @@ int main(int argc, char const *argv[]){
             event.dialog(modal);
         }
 
-        else if (event.command.get_command_name() == "read") {
+        else if (interaction.get_command_name() == "read") {
             string date = get<string>(event.get_parameter("date"));
             fstream file("diaries/" + date + ".txt", ios::in);
             if(file){
@@ -153,7 +155,7 @@ int main(int argc, char const *argv[]){
             }
         }
 
-        else if (event.command.get_command_name() == "remove") {
+        else if (interaction.get_command_name() == "remove") {
             string date = get<string>(event.get_parameter("date")), ret;
             try {
                 if (remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
@@ -165,16 +167,16 @@ int main(int argc, char const *argv[]){
         }
         
         /* custom things */
-        else if (event.command.get_command_name() == "calculator") {
+        else if (interaction.get_command_name() == "calculator") {
             event.reply("You can use these commands for calculator:\n`/add` `/sub` `/mul`");
         }
 
-        else if (event.command.get_command_name() == "diary") {
+        else if (interaction.get_command_name() == "diary") {
             event.reply("You can use these commands for diary:\n`/write` `/read` `/remove`");
         }
 
         //1A2B
-        else if (event.command.get_command_name() == "abgame") {
+        else if (interaction.get_command_name() == "1A2B") {
             event.reply("You can use these commands for 1A2B:\n`/start_game` `/ab_guess` `/quit` `/scoreboard`");
         }
     });
