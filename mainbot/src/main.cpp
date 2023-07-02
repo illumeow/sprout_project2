@@ -176,7 +176,7 @@ int main(int argc, char const *argv[]){
         }
 
         //1A2B
-        else if (interaction.get_command_name() == "1A2B") {
+        else if (interaction.get_command_name() == "1a2b") {
             event.reply("You can use these commands for 1A2B:\n`/start_game` `/ab_guess` `/quit` `/scoreboard`");
         }
     });
@@ -255,7 +255,7 @@ int main(int argc, char const *argv[]){
 
             bot.global_command_create(dpp::slashcommand("scoreboard", "show the scoreboard", bot.me.id));
 
-            bot.global_command_create(dpp::slashcommand("1A2B", "List command of 1A2B", bot.me.id));
+            bot.global_command_create(dpp::slashcommand("1a2b", "List command of 1A2B", bot.me.id));
         }
     });
 
