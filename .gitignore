@@ -1,3 +1,5 @@
 DPP/
-templatebot/
-config.h
+mainbot/build/
+testbot/build/
+mainbot/include/config.h
+testbot/include/config.h
