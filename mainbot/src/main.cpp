@@ -1,8 +1,6 @@
 #include <templatebot/templatebot.h>
 #include <config.h>
-#include <sstream>
-#include <fstream>
-#include <filesystem>
+
 using std::string;
 using std::get;
 using std::to_string;
@@ -11,13 +9,38 @@ using std::ios;
 using std::vector;
 using std::filesystem::remove;
 
-const string bot_token = TOKEN;
 
+/* for task 3 */
 int number_for_guess = 0;
 
+/* 1A2B */
+vector<int> abgame_answer;
+bool abgame_started = false;
+int guess_count;
+
+/* check if a string is a number */
+bool is_number(const string& s){
+    string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return (it == s.end());
+}
+
+/* check if a string is repeated */
+bool is_repeated(const string& s){
+    int count[10] = {0};
+    for(auto& c: s){
+        if(count[c - '0']) return true;
+        count[c - '0']++;
+    }
+    return false;
+}
+
 int main(int argc, char const *argv[]){
+    /* Setup random seed */
+    std::srand(std::time(NULL));
+
     /* Setup the bot */
-    dpp::cluster bot(bot_token);
+    dpp::cluster bot(TOKEN);
 
     /* Output simple log messages to stdout */
     bot.on_log(dpp::utility::cout_logger());
@@ -62,7 +85,7 @@ int main(int argc, char const *argv[]){
         /* task 3.1 */
         else if (interaction.get_command_name() == "reset") {
             /* set the answer in range [1, 100] */
-            number_for_guess = (rand() % 100) + 1;
+            number_for_guess = rand() % 100 + 1;
             // event.reply(to_string(number_for_guess));
         }
 
@@ -73,7 +96,7 @@ int main(int argc, char const *argv[]){
             if (num == number_for_guess) {
                 ret = "Bingo!";
                 /* reset the answer if Bingo */
-                number_for_guess = (rand() % 100) + 1;
+                number_for_guess = rand() % 100 + 1;
             }
             else if (num > number_for_guess) ret = "Guess a smaller number!";
             else ret = "Guess a larger number!";
@@ -186,7 +209,65 @@ int main(int argc, char const *argv[]){
         }
 
         //1A2B
-
+        else if (interaction.get_command_name() == "1a2b") {
+            /* Get the sub command */
+            auto subcommand = interaction.get_command_interaction().options[0];
+            if (subcommand.name == "start") {
+                /* reset abgame_answer */
+                abgame_answer.clear();
+                for(int i=0; i<10; i++) abgame_answer.push_back(-1);
+                bool chose[10] = {};
+                std::cout << "1A2B answer: ";
+                int n;
+                for(int i=0; i<4; i++){
+                    do{
+                        /* number in [1, 9] */
+                        n = rand() % 9 + 1;
+                    }while(chose[n]);
+                    abgame_answer[n] = i;
+                    chose[n] = true;
+                    std::cout << n;
+                }
+                std::cout << '\n';
+                abgame_started = true;
+                guess_count = 0;
+                event.reply("New game started!");
+            }
+            
+            else if (subcommand.name == "guess") {
+                string ret, guess = get<string>(event.get_parameter("number"));
+                bool valid = true;
+                /* check if input is valid or is game started */
+                if((guess.length() != 4) || (!is_number(guess)) || is_repeated(guess)) valid = false;
+                if(!abgame_started) ret = "Please start a new game first.";
+                else if(!valid) ret = "Not a valid guess.";
+                /* counting the A and B */
+                else{
+                    int a = 0, b = 0, indx = 0;
+                    for(auto& i: guess){
+                        int answer_index = abgame_answer[i - '0'];
+                        if(answer_index == indx) a++;
+                        else if(answer_index != -1) b++;
+                        indx++;
+                    }
+                    if(a != 4){
+                        ret = guess + ": " + to_string(a) + "A" + to_string(b) + "B";
+                        /* record the number of guesses */
+                        guess_count++;
+                    }else{
+                        ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.";
+                        /* reset when Bingo */
+                        abgame_started = false;
+                    }
+                }
+                event.reply(ret);
+            }
+            
+            else if (subcommand.name == "quit") {
+                abgame_started = false;
+                event.reply("Game quitted.");
+            }
+        }
     });
  
     /* This event handles form submission for the modal dialog created above */
@@ -254,13 +335,12 @@ int main(int argc, char const *argv[]){
             dpp::slashcommand abgame("1a2b", "1A2B game", bot.me.id);
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "start", "Start a new game"));
             abgame.add_option(
-                dpp::command_option(dpp::co_sub_command, "guess", "Send a picture of a cat.").
-                add_option(dpp::command_option(dpp::co_string, "number", "Guess a number without repeating digit", true))
+                dpp::command_option(dpp::co_sub_command, "guess", "Guess a 4-digit number without any digit repeated").
+                add_option(dpp::command_option(dpp::co_string, "number", "Guess a 4-digit number", true))
             );
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "quit", "Quit the current game"));
-            abgame.add_option(dpp::command_option(dpp::co_sub_command, "scoreboard", "show the scoreboard"));
             bot.global_command_create(abgame);
-
+  
         }
     });
 
