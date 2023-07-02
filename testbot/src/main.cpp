@@ -14,7 +14,7 @@ using std::filesystem::remove;
  * scopes 'bot' and 'applications.commands', e.g.
  * https://discord.com/oauth2/authorize?client_id=940762342495518720&scope=bot+applications.commands&permissions=139586816064 */
 
-const string bot_token = "MTExNzEzODAxMzE0MzcwMzY0Mw.GLdZKD.dj1DI9fbGBf8xsPMR7111aNtsCLex9uss6ChPY";
+const string bot_token = "MTEyNDk2Njc5NTkwOTAwNTMyMg.GhBS1F.Qke60jFgRc0QZ8SzobA0xoBahMSEhL-9h2IhTs";
 
 int number_for_guess = 0;
 
