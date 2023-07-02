@@ -186,15 +186,11 @@ int main(int argc, char const *argv[]){
         }
 
         //1A2B
-        else if (interaction.get_command_name() == "1a2b") {
-            event.reply("You can use these commands for 1A2B:\n`/start_game` `/ab_guess` `/quit` `/scoreboard`");
-        }
+
     });
  
-    /* This event handles form submission for the modal dialog we create above */
+    /* This event handles form submission for the modal dialog created above */
     bot.on_form_submit([&](const dpp::form_submit_t & event) {
-        /* For this simple example we know the first element of the first row ([0][0]) is value type string.
-         * In the real world it may not be safe to make such assumptions! */
         string date = get<string>(event.components[0].components[0].value);
         string title = get<string>(event.components[1].components[0].value);
         string diary_content = get<string>(event.components[2].components[0].value);
