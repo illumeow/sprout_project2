@@ -1,5 +1,6 @@
 DPP/
 testbot/
+.vscode/
 
 mainbot/build/
 mainbot/include/config.h
