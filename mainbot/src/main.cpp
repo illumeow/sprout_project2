@@ -247,8 +247,8 @@ int main(int argc, char const *argv[]){
                 int n;
                 for(int i=0; i<4; i++){
                     do{
-                        /* number in [1, 9] */
-                        n = rand() % 9 + 1;
+                        /* number in [0, 9] */
+                        n = rand() % 10;
                     }while(chose[n]);
                     abgame_answer[n] = i;
                     chose[n] = true;
@@ -394,7 +394,7 @@ int main(int argc, char const *argv[]){
             id_file << todo_id;
             id_file.close();
             fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
-            todo_add << todo_id << '\n' << date << '\n' << todo;
+            todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo;
             todo_add.close();
 
             dpp::message m;
