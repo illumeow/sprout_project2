@@ -1,6 +1,7 @@
 #include <templatebot/templatebot.h>
 #include <config.h>
 
+using std::cout;
 using std::string;
 using std::get;
 using std::getline;
@@ -62,7 +63,7 @@ int main(int argc, char const *argv[]){
     fstream todo_id_file("todolist/id.txt", ios::in);
     int todo_id; todo_id_file >> todo_id;
     todo_id_file.close();
-    std::cout << "todo id: " << todo_id << '\n';
+    cout << "todo id: " << todo_id << '\n';
 
     /* Setup the bot */
     dpp::cluster bot(TOKEN);
@@ -179,11 +180,11 @@ int main(int argc, char const *argv[]){
                 getline(diary_read, title);
                 while(!diary_read.eof()){
                     getline(diary_read, line);
-                    std::cout << "line: " << line << '\n';
+                    cout << "line: " << line << '\n';
                     contents += line;
                     contents += '\n';
                 }
-                std::cout << "contents: " << contents << '\n';
+                cout << "contents: " << contents << '\n';
                 /* create the embed then add it to dpp::message */
                 dpp::embed embed = dpp::embed().
                     set_color(dpp::colors::sti_blue).
@@ -242,7 +243,7 @@ int main(int argc, char const *argv[]){
                 abgame_answer.clear();
                 for(int i=0; i<10; i++) abgame_answer.push_back(-1);
                 bool chose[10] = {};
-                std::cout << "1A2B answer: ";
+                cout << "1A2B answer: ";
                 int n;
                 for(int i=0; i<4; i++){
                     do{
@@ -251,9 +252,9 @@ int main(int argc, char const *argv[]){
                     }while(chose[n]);
                     abgame_answer[n] = i;
                     chose[n] = true;
-                    std::cout << n;
+                    cout << n;
                 }
-                std::cout << '\n';
+                cout << '\n';
                 abgame_started = true;
                 guess_count = 0;
                 event.reply("New game started!");
@@ -298,20 +299,29 @@ int main(int argc, char const *argv[]){
         else if (interaction.get_command_name() == "todo") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "add") {
-                string date = get<string>(event.get_parameter("date"));
-                string todo = get<string>(event.get_parameter("todo"));
-
-                todo_id++;
-                fstream id_file("todolist/id.txt", ios::out);
-                id_file << todo_id;
-                id_file.close();
-                fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
-                todo_add << todo_id << '\n' << date << '\n' << todo;
-                todo_add.close();
-
-                dpp::message m;
-                m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
-                event.reply(m);
+                dpp::interaction_modal_response modal("todo", "Enter your todo!");
+                modal.add_component(
+                    dpp::component().
+                    set_label("DATE(IN FORMS OF YYYYMMDD)").
+                    set_id("date").
+                    set_type(dpp::cot_text).
+                    set_placeholder("YYYYMMDD").
+                    set_min_length(8).
+                    set_max_length(8).
+                    set_text_style(dpp::text_short)
+                );
+                modal.add_row();
+                modal.add_component(
+                    dpp::component().
+                    set_label("TODO").
+                    set_id("todo").
+                    set_type(dpp::cot_text).
+                    set_placeholder("enter your todo here").
+                    set_min_length(1).
+                    set_max_length(100).
+                    set_text_style(dpp::text_short)
+                );
+                event.dialog(modal);
             }
             
             else if (subcommand.name == "remove") {
@@ -339,11 +349,12 @@ int main(int argc, char const *argv[]){
                 id_file.close();
                 todo_id = 0;
 
-                event.reply("Removed " + to_string(file_count) + " todos ( ´▽` )ﾉ");
+                string s_or_not = file_count>1?" todos ":" todo ";
+                event.reply("Removed " + to_string(file_count) + s_or_not + "( ´▽` )ﾉ");
             }
 
             else if (subcommand.name == "ls") {
-
+                event.reply("```\n   id   date     todo\nstarts here\n```");
             }
 
             else if (subcommand.name == "complete") {
@@ -358,18 +369,39 @@ int main(int argc, char const *argv[]){
  
     /* This event handles form submission for the modal dialog created above */
     bot.on_form_submit([&](const dpp::form_submit_t & event) {
-        string date = get<string>(event.components[0].components[0].value);
-        string title = get<string>(event.components[1].components[0].value);
-        string diary_content = get<string>(event.components[2].components[0].value);
+        int components_count = event.components.size();
+        if(components_count == 3){
+            string date = get<string>(event.components[0].components[0].value);
+            string title = get<string>(event.components[1].components[0].value);
+            string diary_content = get<string>(event.components[2].components[0].value);
 
-        fstream diary_write("diaries/" + date + ".txt", ios::out);
-        diary_write << title << '\n' << diary_content;
-        diary_write.close();
+            /* save it */
+            fstream diary_write("diaries/" + date + ".txt", ios::out);
+            diary_write << title << '\n' << diary_content;
+            diary_write.close();
 
-        dpp::message m;
-        m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
-        /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
-        event.reply(m);
+             /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
+            dpp::message m;
+            m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
+            event.reply(m);
+        }else if(components_count == 2){
+            string date = get<string>(event.components[0].components[0].value);
+            string todo = get<string>(event.components[1].components[0].value);
+
+            /* update todo_id and save it */
+            todo_id++;
+            fstream id_file("todolist/id.txt", ios::out);
+            id_file << todo_id;
+            id_file.close();
+            fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
+            todo_add << todo_id << '\n' << date << '\n' << todo;
+            todo_add.close();
+
+            dpp::message m;
+            m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
+            event.reply(m);
+        }
+        
     });
 
     bot.on_ready([&bot](const dpp::ready_t& event) {
@@ -429,11 +461,7 @@ int main(int argc, char const *argv[]){
 
             // TODO List
             dpp::slashcommand todo("todo", "TODO List", bot.me.id);
-            todo.add_option(
-                dpp::command_option(dpp::co_sub_command, "add", "Add a new todo").
-                add_option(dpp::command_option(dpp::co_string, "date", "Enter the date (YYYYMMDD)", true)).
-                add_option(dpp::command_option(dpp::co_string, "todo", "Enter what you're gonna do", true))
-                );
+            todo.add_option(dpp::command_option(dpp::co_sub_command, "add", "Add a new todo"));
             todo.add_option(
                 dpp::command_option(dpp::co_sub_command, "remove", "Remove a todo").
                 add_option(dpp::command_option(dpp::co_string, "id", "Enter the id of it", true))
