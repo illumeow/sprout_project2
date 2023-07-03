@@ -358,11 +358,33 @@ int main(int argc, char const *argv[]){
             }
 
             else if (subcommand.name == "complete") {
-                int id = stoi(get<string>(event.get_parameter("id")));
+                string id = get<string>(event.get_parameter("id"));
+                fstream todo_file_in("todolist/" + id + ".txt", ios::in);
+                string writeBuffer, lineBuffer;
+                getline(todo_file_in, lineBuffer);
+                while(getline(todo_file_in, lineBuffer)){
+                    writeBuffer += lineBuffer + '\n';
+                }
+                todo_file_in.close();
+                fstream todo_file_out("todolist/" + id + ".txt", ios::out);
+                todo_file_out << "1\n" << writeBuffer;
+                todo_file_out.close();
+                event.reply("Marked `" + id + "` as complete ヾ(≧▽≦*)o");
             }
 
             else if (subcommand.name == "incomplete") {
-                int id = stoi(get<string>(event.get_parameter("id")));
+                string id = get<string>(event.get_parameter("id"));
+                fstream todo_file_in("todolist/" + id + ".txt", ios::in);
+                string writeBuffer, lineBuffer;
+                getline(todo_file_in, lineBuffer);
+                while(getline(todo_file_in, lineBuffer)){
+                    writeBuffer += lineBuffer + '\n';
+                }
+                todo_file_in.close();
+                fstream todo_file_out("todolist/" + id + ".txt", ios::out);
+                todo_file_out << "0\n" << writeBuffer;
+                todo_file_out.close();
+                event.reply("Marked `" + id + "` as incomplete ~(>_<。)\\");
             }
         }
     });
@@ -394,7 +416,7 @@ int main(int argc, char const *argv[]){
             id_file << todo_id;
             id_file.close();
             fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
-            todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo;
+            todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo << '\n';
             todo_add.close();
 
             dpp::message m;
