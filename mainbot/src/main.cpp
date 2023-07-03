@@ -3,11 +3,12 @@
 
 using std::string;
 using std::get;
+using std::getline;
 using std::to_string;
 using std::fstream;
 using std::ios;
 using std::vector;
-using std::filesystem::remove;
+namespace fs = std::filesystem;
 
 
 /* for task 3 */
@@ -35,9 +36,33 @@ bool is_repeated(const string& s){
     return false;
 }
 
+/* TODO List */
+struct Date{
+    int year, month, day;
+    Date(){};
+    Date(string date){
+        year = stoi(date.substr(0, 4));
+        month = stoi(date.substr(4, 2));
+        day = stoi(date.substr(6, 2));
+    };
+};
+
+struct ToDo: public Date{
+    string id, raw_date, todo;
+    Date date;
+    ToDo(string id, string raw_date, string todo): id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
+};
+
+
 int main(int argc, char const *argv[]){
     /* Setup random seed */
     std::srand(std::time(NULL));
+
+    /* TODO List */
+    fstream todo_id_file("todolist/id.txt", ios::in);
+    int todo_id; todo_id_file >> todo_id;
+    todo_id_file.close();
+    std::cout << "todo id: " << todo_id << '\n';
 
     /* Setup the bot */
     dpp::cluster bot(TOKEN);
@@ -46,7 +71,7 @@ int main(int argc, char const *argv[]){
     bot.on_log(dpp::utility::cout_logger());
 
     /* Handle slash command */
-    bot.on_slashcommand([](const dpp::slashcommand_t& event) {
+    bot.on_slashcommand([&](const dpp::slashcommand_t& event) {
         dpp::interaction interaction = event.command;
 
         if (interaction.get_command_name() == "ping") {
@@ -148,12 +173,12 @@ int main(int argc, char const *argv[]){
         /* task 4.2 */
         else if (interaction.get_command_name() == "read") {
             string date = get<string>(event.get_parameter("date"));
-            fstream file("diaries/" + date + ".txt", ios::in);
-            if(file){
+            fstream diary_read("diaries/" + date + ".txt", ios::in);
+            if(diary_read){
                 string title, line, contents = "";
-                getline(file, title);
-                while(!file.eof()){
-                    getline(file, line);
+                getline(diary_read, title);
+                while(!diary_read.eof()){
+                    getline(diary_read, line);
                     std::cout << "line: " << line << '\n';
                     contents += line;
                     contents += '\n';
@@ -174,7 +199,7 @@ int main(int argc, char const *argv[]){
                     set_footer(dpp::embed_footer().set_text("My Diary at " + date)).
                     set_timestamp(time(0));
 
-                file.close();
+                diary_read.close();
 
                 dpp::message m;
                 m.add_embed(embed);
@@ -190,11 +215,11 @@ int main(int argc, char const *argv[]){
             string date = get<string>(event.get_parameter("date")), ret;
             try {
                 /* use std::filesystem to remove */
-                if (remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
+                if (fs::remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
                 else ret = "Diary deletion failed :(";
             }catch(...){
                 /* catch any */
-                ret = "Diary deleted successfully :)";
+                ret = "Diary deletion failed :(";
             }
             event.reply(ret);
         }
@@ -208,7 +233,7 @@ int main(int argc, char const *argv[]){
             event.reply("You can use these commands for diary:\n`/write` `/read` `/remove`");
         }
 
-        //1A2B
+        // 1A2B
         else if (interaction.get_command_name() == "1a2b") {
             /* Get the sub command */
             auto subcommand = interaction.get_command_interaction().options[0];
@@ -268,6 +293,67 @@ int main(int argc, char const *argv[]){
                 event.reply("Game quitted.");
             }
         }
+
+        // TODO List
+        else if (interaction.get_command_name() == "todo") {
+            auto subcommand = interaction.get_command_interaction().options[0];
+            if (subcommand.name == "add") {
+                string date = get<string>(event.get_parameter("date"));
+                string todo = get<string>(event.get_parameter("todo"));
+
+                todo_id++;
+                fstream id_file("todolist/id.txt", ios::out);
+                id_file << todo_id;
+                id_file.close();
+                fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
+                todo_add << todo_id << '\n' << date << '\n' << todo;
+                todo_add.close();
+
+                dpp::message m;
+                m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
+                event.reply(m);
+            }
+            
+            else if (subcommand.name == "remove") {
+                string id = get<string>(event.get_parameter("id")), ret;
+                try {
+                    if (fs::remove("todolist/" + id + ".txt")) ret = "todo deleted ( •̀ ω •́ )✧";
+                    else ret = "todo does not exist (⊙ˍ⊙)";
+                }catch(...){
+                    ret = "todo deletion failed （；´д｀）ゞ";
+                }
+                event.reply(ret);
+            }
+            
+            else if (subcommand.name == "remove_all") {
+                /* remove all todos and count (id.txt excluded)*/
+                int file_count = -1;
+                for (const auto& entry: fs::directory_iterator("todolist/")){
+                    fs::remove(entry.path());
+                    file_count++;
+                }
+
+                /* reset todo id */
+                fstream id_file("todolist/id.txt", ios::out);
+                id_file << "0";
+                id_file.close();
+                todo_id = 0;
+
+                event.reply("Removed " + to_string(file_count) + " todos ( ´▽` )ﾉ");
+            }
+
+            else if (subcommand.name == "ls") {
+
+            }
+
+            else if (subcommand.name == "complete") {
+                int id = stoi(get<string>(event.get_parameter("id")));
+            }
+
+            else if (subcommand.name == "incomplete") {
+                int id = stoi(get<string>(event.get_parameter("id")));
+            }
+        }
     });
  
     /* This event handles form submission for the modal dialog created above */
@@ -276,9 +362,9 @@ int main(int argc, char const *argv[]){
         string title = get<string>(event.components[1].components[0].value);
         string diary_content = get<string>(event.components[2].components[0].value);
 
-        fstream file("diaries/" + date + ".txt", ios::out);
-        file << title << '\n' << diary_content;
-        file.close();
+        fstream diary_write("diaries/" + date + ".txt", ios::out);
+        diary_write << title << '\n' << diary_content;
+        diary_write.close();
 
         dpp::message m;
         m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
@@ -340,7 +426,29 @@ int main(int argc, char const *argv[]){
             );
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "quit", "Quit the current game"));
             bot.global_command_create(abgame);
-  
+
+            // TODO List
+            dpp::slashcommand todo("todo", "TODO List", bot.me.id);
+            todo.add_option(
+                dpp::command_option(dpp::co_sub_command, "add", "Add a new todo").
+                add_option(dpp::command_option(dpp::co_string, "date", "Enter the date (YYYYMMDD)", true)).
+                add_option(dpp::command_option(dpp::co_string, "todo", "Enter what you're gonna do", true))
+                );
+            todo.add_option(
+                dpp::command_option(dpp::co_sub_command, "remove", "Remove a todo").
+                add_option(dpp::command_option(dpp::co_string, "id", "Enter the id of it", true))
+            );
+            todo.add_option(dpp::command_option(dpp::co_sub_command, "remove_all", "Remove the whole list"));
+            todo.add_option(dpp::command_option(dpp::co_sub_command, "ls", "Show the list in chronological order"));
+            todo.add_option(
+                dpp::command_option(dpp::co_sub_command, "complete", "Mark a todo as complete").
+                add_option(dpp::command_option(dpp::co_string, "id", "Enter the id of it", true))
+            );
+            todo.add_option(
+                dpp::command_option(dpp::co_sub_command, "incomplete", "Mark a todo as incomplete").
+                add_option(dpp::command_option(dpp::co_string, "id", "Enter the id of it", true))
+            );
+            bot.global_command_create(todo);
         }
     });
 
