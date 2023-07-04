@@ -93,28 +93,28 @@ int main(int argc, char const *argv[]) {
             /* fetch a parameter value from the command parameters */
             string name = get<string>(event.get_parameter("username"));
             /* reply to the command */
-            event.reply(string("Hello ") + name);
+            event.reply("Hello " + name);
         }
 
         /* task 2.1 */
         else if (interaction.get_command_name() == "add") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
-            event.reply(string("[Add] The result is ") + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
+            event.reply("[Add] The result is " + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
         }
 
         /* task 2.2 */
         else if (interaction.get_command_name() == "sub") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
-            event.reply(string("[Sub] The result is ") + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
+            event.reply("[Sub] The result is " + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
         }
 
         /* task 2.3 */
         else if (interaction.get_command_name() == "mul") {
             int num1 = stoi(get<string>(event.get_parameter("number_1")));
             int num2 = stoi(get<string>(event.get_parameter("number_2")));
-            event.reply(string("[Mul] The result is ") + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
+            event.reply("[Mul] The result is " + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
         }
 
         /* task 3.1 */
@@ -139,6 +139,7 @@ int main(int argc, char const *argv[]) {
                 ret = "Bingo!";
                 /* reset the answer if Bingo */
                 number_for_guess = rand() % 100 + 1;
+                std::cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
             }
             else if (num > number_for_guess) ret = "Guess a smaller number!";
             else ret = "Guess a larger number!";
