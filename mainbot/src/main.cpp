@@ -339,36 +339,32 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "register") {
                 string username = get<string>(event.get_parameter("username"));
                 string user_id = to_string(interaction.get_issuing_user().id);
-                fstream id2username_in("1A2B/id2username.txt", ios::in);
-                string id, name;
-                bool update = false;
-                while (id2username_in >> id >> name) {
-                    if (id == user_id) update = true;
+                fstream id2username;
+                
+                /* an update */
+                if (fs::exists("1A2B/" + user_id + ".txt")) {
+                    string old_name, best_play, play_count;
+                    id2username.open("1A2B/" + user_id + ".txt", ios::in);
+                    id2username >> old_name >> best_play >> play_count;
+                    id2username.close();
+                    id2username.open("1A2B/" + user_id + ".txt", ios::out);
+                    id2username << username << ' ' << best_play << ' ' << play_count;
+                    id2username.close();
+                    event.reply("Your username has been updated from `" + old_name + "` to `" + username + "`");
                 }
-                id2username_in.close();
-                if (update) {
-                    string writeBuffer;
-                    id2username_in.open("1A2B/id2username.txt", ios::in);
-                    while (id2username_in >> id >> name) {
-                        if (id == user_id) name = username;
-                        writeBuffer += id + ' ' + name + '\n';
-                    }
-                    fstream id2username_out("1A2B/id2username.txt", ios::out);
-                    id2username_out << writeBuffer;
-                    id2username_out.close();
-                    event.reply("Your username is updated as `" + username + "`");
-                }
+                /* new register */
                 else {
-                    fstream id2username_out("1A2B/id2username.txt", ios::app);
-                    id2username_out << user_id << ' ' << username << '\n';
-                    id2username_out.close();
+                    id2username.open("1A2B/" + user_id + ".txt", ios::out);
+                    id2username << username << ' ' << "N/A N/A\n";
+                    id2username.close();
                     event.reply("Your username is registered as `" + username + "`");
                 }
             }
 
             else if (subcommand.name == "scoreboard") {
-                abgame_started = false;
-                event.reply("Game quitted.");
+                string ret = "```\n  user    best play  play count\n";
+                ret += "```";
+                event.reply(ret);
             }
         }
 
