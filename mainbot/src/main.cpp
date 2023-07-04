@@ -323,7 +323,40 @@ int main(int argc, char const *argv[]) {
                         guess_count++;
                     }
                     else{
-                        ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.";
+                        ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.\n";
+                        
+                        /* update record */
+                        string user_id = to_string(interaction.get_issuing_user().id);
+                        /* if registered */
+                        if (fs::exists("1A2B/" + user_id + ".txt")) {
+                            fstream record;
+                            string username, best_play, play_count, writeBuffer;
+                            record.open("1A2B/" + user_id + ".txt", ios::in);
+                            record >> username >> best_play >> play_count;
+                            record.close();
+                            if (best_play == "N/A") {
+                                ret += "Best Play Updated!";
+                                writeBuffer +=  username + ' ' + to_string(guess_count+1) + " 1";
+                            }
+                            else {
+                                if(guess_count+1 < stoi(best_play)) {
+                                    ret += "Best Play Updated!";
+                                    writeBuffer +=  username + ' ' + to_string(guess_count+1) + ' ' + to_string(stoi(play_count)+1);
+                                }
+                                else {
+                                    ret += "Good luck on next game!";
+                                    writeBuffer +=  username + ' ' + best_play + ' ' + to_string(stoi(play_count)+1);
+                                }
+                            }
+                            record.open("1A2B/" + user_id + ".txt", ios::out);
+                            record << writeBuffer;
+                            record.close();
+                        }
+                        /* anonymous user */
+                        else {
+                           ret += "This game isn't record because you haven't register yet.";
+                        }
+
                         /* reset when Bingo */
                         abgame_started = false;
                     }
@@ -339,24 +372,24 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "register") {
                 string username = get<string>(event.get_parameter("username"));
                 string user_id = to_string(interaction.get_issuing_user().id);
-                fstream id2username;
+                fstream record;
                 
                 /* an update */
                 if (fs::exists("1A2B/" + user_id + ".txt")) {
                     string old_name, best_play, play_count;
-                    id2username.open("1A2B/" + user_id + ".txt", ios::in);
-                    id2username >> old_name >> best_play >> play_count;
-                    id2username.close();
-                    id2username.open("1A2B/" + user_id + ".txt", ios::out);
-                    id2username << username << ' ' << best_play << ' ' << play_count;
-                    id2username.close();
+                    record.open("1A2B/" + user_id + ".txt", ios::in);
+                    record >> old_name >> best_play >> play_count;
+                    record.close();
+                    record.open("1A2B/" + user_id + ".txt", ios::out);
+                    record << username << ' ' << best_play << ' ' << play_count;
+                    record.close();
                     event.reply("Your username has been updated from `" + old_name + "` to `" + username + "`");
                 }
                 /* new register */
                 else {
-                    id2username.open("1A2B/" + user_id + ".txt", ios::out);
-                    id2username << username << ' ' << "N/A N/A\n";
-                    id2username.close();
+                    record.open("1A2B/" + user_id + ".txt", ios::out);
+                    record << username << ' ' << "N/A N/A\n";
+                    record.close();
                     event.reply("Your username is registered as `" + username + "`");
                 }
             }
@@ -365,6 +398,10 @@ int main(int argc, char const *argv[]) {
                 string ret = "```\n  user    best play  play count\n";
                 ret += "```";
                 event.reply(ret);
+            }
+
+            else if (subcommand.name == "delete") {
+
             }
         }
 
@@ -607,10 +644,11 @@ int main(int argc, char const *argv[]) {
             );
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "quit", "Quit the current game"));
             abgame.add_option(
-                dpp::command_option(dpp::co_sub_command, "register", "set your name").
+                dpp::command_option(dpp::co_sub_command, "register", "Set your name").
                 add_option(dpp::command_option(dpp::co_string, "username", "Enter any custom name you want!", true))
             );
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "scoreboard", "List all players' play records"));
+            abgame.add_option(dpp::command_option(dpp::co_sub_command, "delete", "Delete your play record"));
             bot.global_command_create(abgame);
 
             // TODO List
