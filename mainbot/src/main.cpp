@@ -121,14 +121,21 @@ int main(int argc, char const *argv[]){
         else if (interaction.get_command_name() == "reset") {
             /* set the answer in range [1, 100] */
             number_for_guess = rand() % 100 + 1;
-            // event.reply(to_string(number_for_guess));
+            std::cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
+            event.reply("[Guess Number] Reset Successful!");
         }
 
         /* task 3.2 */
         else if (interaction.get_command_name() == "guess") {
             int num = stoi(get<string>(event.get_parameter("number_guess")));
             string ret;
-            if (num == number_for_guess) {
+            if (number_for_guess == 0){
+                ret = "Please `/reset` first.";
+            }
+            else if (1 > num || num > 100) {
+                ret = "Invalid guess.";
+            }
+            else if (num == number_for_guess) {
                 ret = "Bingo!";
                 /* reset the answer if Bingo */
                 number_for_guess = rand() % 100 + 1;
