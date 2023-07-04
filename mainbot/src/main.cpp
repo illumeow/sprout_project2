@@ -15,6 +15,28 @@ namespace fs = std::filesystem;
 /* for task 3 */
 int number_for_guess = 0;
 
+/* date validation */
+bool is_valid_date(const string& s) {
+    int year = stoi(s.substr(0, 4));
+    int month = stoi(s.substr(4, 2));
+    int day = stoi(s.substr(6, 2));
+
+    if (year > 0) {
+        if ((month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) &&
+             day > 0 && day <= 31) return true;
+        else if ((month == 4 || month == 6 || month == 9|| month == 11) 
+                && day>0 && day<=30) return true;
+        else if (month == 2) {
+            if((year%400 == 0 || (year%100 != 0 && year%4 == 0)) &&
+                day > 0 && day <= 29) return true;
+            else if (day>0 && day<=28) return true;
+            else return false;
+        }
+        else return false;
+    }
+    else return false;
+}
+
 /* 1A2B */
 vector<int> abgame_answer;
 bool abgame_started = false;
@@ -371,8 +393,11 @@ int main(int argc, char const *argv[]) {
                 id_file.close();
                 todo_id = 0;
 
-                string s_or_not = file_count>1?" todos ":" todo ";
-                event.reply("Removed " + to_string(file_count) + s_or_not + "( ´▽` )ﾉ");
+                if (file_count) {
+                    string s_or_not = file_count>1?" todos ":" todo ";
+                    event.reply("Removed " + to_string(file_count) + s_or_not + "( ´▽` )ﾉ");
+                }
+                else event.reply("There are no todos to be removed ( ´▽` )ﾉ");
             }
 
             else if (subcommand.name == "ls") {
@@ -461,32 +486,38 @@ int main(int argc, char const *argv[]) {
             string title = get<string>(event.components[1].components[0].value);
             string diary_content = get<string>(event.components[2].components[0].value);
 
-            /* save it */
-            fstream diary_write("diaries/" + date + ".txt", ios::out);
-            diary_write << title << '\n' << diary_content;
-            diary_write.close();
+            if(is_valid_date(date)) {
+                 /* save it */
+                fstream diary_write("diaries/" + date + ".txt", ios::out);
+                diary_write << title << '\n' << diary_content;
+                diary_write.close();
 
-             /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
-            dpp::message m;
-            m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
-            event.reply(m);
+                /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
+                dpp::message m;
+                m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
+                event.reply(m);
+            }
+            else event.reply("[Diary] date is invalid");
         }
         else if (form_id == "todo") {
             string date = get<string>(event.components[0].components[0].value);
             string todo = get<string>(event.components[1].components[0].value);
 
-            /* update todo_id and save it */
-            todo_id++;
-            fstream id_file("todolist/id.txt", ios::out);
-            id_file << todo_id;
-            id_file.close();
-            fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
-            todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo << '\n';
-            todo_add.close();
+            if(is_valid_date(date)) {
+                /* update todo_id and save it */
+                todo_id++;
+                fstream id_file("todolist/id.txt", ios::out);
+                id_file << todo_id;
+                id_file.close();
+                fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
+                todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo << '\n';
+                todo_add.close();
 
-            dpp::message m;
-            m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
-            event.reply(m);
+                dpp::message m;
+                m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
+                event.reply(m);
+            }
+            else event.reply("[TODO] date is invalid");
         }
         
     });
