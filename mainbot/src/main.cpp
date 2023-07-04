@@ -372,6 +372,7 @@ int main(int argc, char const *argv[]){
                 fstream todo_file;
                 bool complete;
                 string id, raw_date, todo;
+                int count = 0;
                 for (const auto& entry: fs::directory_iterator("todolist/")){
                     file_name = entry.path().string();
                     if(file_name == "todolist/id.txt") continue;
@@ -382,17 +383,22 @@ int main(int argc, char const *argv[]){
                     todo_file.close();
                     ToDo todo_obj(complete, id, raw_date, todo);
                     todos.push_back(todo_obj);
+                    count++;
                 }
-                std::sort(todos.begin(), todos.end(), todo_cmp);
+                if(count){
+                    std::sort(todos.begin(), todos.end(), todo_cmp);
 
-                /* add them to ret */
-                for(auto& todo: todos){
-                    ret += todo.complete?"\u2611  ":"\u2610  ";
-                    if(todo.id.length() < 2) ret += " ";
-                    ret += todo.id + "  " + todo.raw_date + "  " + todo.todo + "\n";
+                    /* add them to ret */
+                    for(auto& todo: todos){
+                        ret += todo.complete?"\u2611  ":"\u2610  ";
+                        if(todo.id.length() < 2) ret += " ";
+                        ret += todo.id + "  " + todo.raw_date + "  " + todo.todo + "\n";
+                    }
+                    ret += "```";
+                    event.reply(ret);
+                }else{
+                    event.reply("```No any todos! (/≧▽≦)/```");
                 }
-                ret += "```";
-                event.reply(ret);
             }
 
             else if (subcommand.name == "complete") {
