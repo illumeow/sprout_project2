@@ -308,6 +308,7 @@ int main(int argc, char const *argv[]){
         else if (interaction.get_command_name() == "todo") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "add") {
+                /* use dialog box */
                 dpp::interaction_modal_response modal("todo", "Enter your todo!");
                 modal.add_component(
                     dpp::component().
@@ -396,6 +397,8 @@ int main(int argc, char const *argv[]){
 
             else if (subcommand.name == "complete") {
                 string id = get<string>(event.get_parameter("id"));
+
+                /* use buffer to contain the data */
                 fstream todo_file_in("todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
@@ -403,6 +406,8 @@ int main(int argc, char const *argv[]){
                     writeBuffer += lineBuffer + '\n';
                 }
                 todo_file_in.close();
+
+                /* write the buffer and change [complete] at the same time */
                 fstream todo_file_out("todolist/" + id + ".txt", ios::out);
                 todo_file_out << "1\n" << writeBuffer;
                 todo_file_out.close();
@@ -411,6 +416,7 @@ int main(int argc, char const *argv[]){
 
             else if (subcommand.name == "incomplete") {
                 string id = get<string>(event.get_parameter("id"));
+
                 fstream todo_file_in("todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
@@ -418,6 +424,7 @@ int main(int argc, char const *argv[]){
                     writeBuffer += lineBuffer + '\n';
                 }
                 todo_file_in.close();
+
                 fstream todo_file_out("todolist/" + id + ".txt", ios::out);
                 todo_file_out << "0\n" << writeBuffer;
                 todo_file_out.close();
@@ -428,8 +435,9 @@ int main(int argc, char const *argv[]){
  
     /* This event handles form submission for the modal dialog created above */
     bot.on_form_submit([&](const dpp::form_submit_t & event) {
-        int components_count = event.components.size();
-        if(components_count == 3){
+        /* use custom_id to ensure which command is used*/
+        string form_id = event.custom_id;
+        if(form_id == "diary"){
             string date = get<string>(event.components[0].components[0].value);
             string title = get<string>(event.components[1].components[0].value);
             string diary_content = get<string>(event.components[2].components[0].value);
@@ -443,7 +451,7 @@ int main(int argc, char const *argv[]){
             dpp::message m;
             m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
             event.reply(m);
-        }else if(components_count == 2){
+        }else if(form_id == "todo"){
             string date = get<string>(event.components[0].components[0].value);
             string todo = get<string>(event.components[1].components[0].value);
 
