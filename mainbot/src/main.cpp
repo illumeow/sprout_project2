@@ -120,22 +120,22 @@ int main(int argc, char const *argv[]) {
 
         /* task 2.1 */
         else if (interaction.get_command_name() == "add") {
-            int num1 = stoi(get<string>(event.get_parameter("number_1")));
-            int num2 = stoi(get<string>(event.get_parameter("number_2")));
+            int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
+            int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Add] The result is " + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
         }
 
         /* task 2.2 */
         else if (interaction.get_command_name() == "sub") {
-            int num1 = stoi(get<string>(event.get_parameter("number_1")));
-            int num2 = stoi(get<string>(event.get_parameter("number_2")));
+            int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
+            int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Sub] The result is " + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
         }
 
         /* task 2.3 */
         else if (interaction.get_command_name() == "mul") {
-            int num1 = stoi(get<string>(event.get_parameter("number_1")));
-            int num2 = stoi(get<string>(event.get_parameter("number_2")));
+            int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
+            int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Mul] The result is " + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
         }
 
@@ -149,7 +149,7 @@ int main(int argc, char const *argv[]) {
 
         /* task 3.2 */
         else if (interaction.get_command_name() == "guess") {
-            int num = stoi(get<string>(event.get_parameter("number_guess")));
+            int64_t num = get<int64_t>(event.get_parameter("number_guess"));
             string ret;
             if (number_for_guess == 0) {
                 ret = "Please `/reset` first.";
@@ -532,24 +532,24 @@ int main(int argc, char const *argv[]) {
             bot.global_command_create(greeting);
 
             dpp::slashcommand add("add", "Add two given integers", bot.me.id);
-            add.add_option(dpp::command_option(dpp::co_string, "number_1", "Enter an integer", true));
-            add.add_option(dpp::command_option(dpp::co_string, "number_2", "Enter an integer", true));
+            add.add_option(dpp::command_option(dpp::co_integer, "number_1", "Enter an integer", true));
+            add.add_option(dpp::command_option(dpp::co_integer, "number_2", "Enter an integer", true));
             bot.global_command_create(add);
 
             dpp::slashcommand sub("sub", "Substract two given integers", bot.me.id);
-            sub.add_option(dpp::command_option(dpp::co_string, "number_1", "Enter an integer", true));
-            sub.add_option(dpp::command_option(dpp::co_string, "number_2", "Enter an integer", true));
+            sub.add_option(dpp::command_option(dpp::co_integer, "number_1", "Enter an integer", true));
+            sub.add_option(dpp::command_option(dpp::co_integer, "number_2", "Enter an integer", true));
             bot.global_command_create(sub);
 
             dpp::slashcommand mul("mul", "Multiply two given integers", bot.me.id);
-            mul.add_option(dpp::command_option(dpp::co_string, "number_1", "Enter an integer", true));
-            mul.add_option(dpp::command_option(dpp::co_string, "number_2", "Enter an integer", true));
+            mul.add_option(dpp::command_option(dpp::co_integer, "number_1", "Enter an integer", true));
+            mul.add_option(dpp::command_option(dpp::co_integer, "number_2", "Enter an integer", true));
             bot.global_command_create(mul);
 
             bot.global_command_create(dpp::slashcommand("reset", "Ramdomly generate an integer between 1 and 100", bot.me.id));
         
             dpp::slashcommand guess("guess", "Guess an integer between 1 and 100, reset on Bingo", bot.me.id);
-            guess.add_option(dpp::command_option(dpp::co_string, "number_guess", "Guess an integer between 1 and 100", true));
+            guess.add_option(dpp::command_option(dpp::co_integer, "number_guess", "Guess an integer between 1 and 100", true));
             bot.global_command_create(guess);
 
             bot.global_command_create(dpp::slashcommand("write", "Write a new diary", bot.me.id));
