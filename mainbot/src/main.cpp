@@ -21,17 +21,17 @@ bool abgame_started = false;
 int guess_count;
 
 /* check if a string is a number */
-bool is_number(const string& s){
+bool is_number(const string& s) {
     string::const_iterator it = s.begin();
     while (it != s.end() && std::isdigit(*it)) ++it;
     return (it == s.end());
 }
 
 /* check if a string is repeated */
-bool is_repeated(const string& s){
+bool is_repeated(const string& s) {
     int count[10] = {0};
-    for(auto& c: s){
-        if(count[c - '0']) return true;
+    for (auto& c: s) {
+        if (count[c - '0']) return true;
         count[c - '0']++;
     }
     return false;
@@ -41,7 +41,7 @@ bool is_repeated(const string& s){
 struct Date{
     int year, month, day;
     Date(){};
-    Date(string date){
+    Date(string date) {
         year = stoi(date.substr(0, 4));
         month = stoi(date.substr(4, 2));
         day = stoi(date.substr(6, 2));
@@ -56,15 +56,15 @@ struct ToDo: public Date{
     complete(complete), id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
 };
 
-bool todo_cmp(ToDo& a, ToDo& b){
-    if(a.date.year != b.date.year)
+bool todo_cmp(ToDo& a, ToDo& b) {
+    if (a.date.year != b.date.year)
         return a.date.year < b.date.year;
-    if(a.date.month != b.date.month)
+    if (a.date.month != b.date.month)
         return a.date.month < b.date.month;
     return a.date.day < b.date.day;
 };
 
-int main(int argc, char const *argv[]){
+int main(int argc, char const *argv[]) {
     /* Setup random seed */
     std::srand(std::time(NULL));
 
@@ -129,7 +129,7 @@ int main(int argc, char const *argv[]){
         else if (interaction.get_command_name() == "guess") {
             int num = stoi(get<string>(event.get_parameter("number_guess")));
             string ret;
-            if (number_for_guess == 0){
+            if (number_for_guess == 0) {
                 ret = "Please `/reset` first.";
             }
             else if (1 > num || num > 100) {
@@ -191,10 +191,10 @@ int main(int argc, char const *argv[]){
         else if (interaction.get_command_name() == "read") {
             string date = get<string>(event.get_parameter("date"));
             fstream diary_read("diaries/" + date + ".txt", ios::in);
-            if(diary_read){
+            if (diary_read) {
                 string title, line, contents = "";
                 getline(diary_read, title);
-                while(!diary_read.eof()){
+                while (!diary_read.eof()) {
                     getline(diary_read, line);
                     cout << "line: " << line << '\n';
                     contents += line;
@@ -221,7 +221,8 @@ int main(int argc, char const *argv[]){
                 dpp::message m;
                 m.add_embed(embed);
                 event.reply(m);
-            }else{
+            }
+            else{
                 /* file not opened */
                 event.reply("Diary not found!!!!");
             }
@@ -234,7 +235,8 @@ int main(int argc, char const *argv[]){
                 /* use std::filesystem to remove */
                 if (fs::remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
                 else ret = "Diary deletion failed :(";
-            }catch(...){
+            }
+            catch (...) {
                 /* catch any */
                 ret = "Diary deletion failed :(";
             }
@@ -257,15 +259,15 @@ int main(int argc, char const *argv[]){
             if (subcommand.name == "start") {
                 /* reset abgame_answer */
                 abgame_answer.clear();
-                for(int i=0; i<10; i++) abgame_answer.push_back(-1);
+                for (int i=0; i<10; i++) abgame_answer.push_back(-1);
                 bool chose[10] = {};
                 cout << "1A2B answer: ";
                 int n;
-                for(int i=0; i<4; i++){
+                for (int i=0; i<4; i++) {
                     do{
                         /* number in [0, 9] */
                         n = rand() % 10;
-                    }while(chose[n]);
+                    }while (chose[n]);
                     abgame_answer[n] = i;
                     chose[n] = true;
                     cout << n;
@@ -280,23 +282,24 @@ int main(int argc, char const *argv[]){
                 string ret, guess = get<string>(event.get_parameter("number"));
                 bool valid = true;
                 /* check if input is valid or is game started */
-                if((guess.length() != 4) || (!is_number(guess)) || is_repeated(guess)) valid = false;
-                if(!abgame_started) ret = "Please start a new game first.";
-                else if(!valid) ret = "Not a valid guess.";
+                if ((guess.length() != 4) || (!is_number(guess)) || is_repeated(guess)) valid = false;
+                if (!abgame_started) ret = "Please start a new game first.";
+                else if (!valid) ret = "Not a valid guess.";
                 /* counting the A and B */
                 else{
                     int a = 0, b = 0, indx = 0;
-                    for(auto& i: guess){
+                    for (auto& i: guess) {
                         int answer_index = abgame_answer[i - '0'];
-                        if(answer_index == indx) a++;
-                        else if(answer_index != -1) b++;
+                        if (answer_index == indx) a++;
+                        else if (answer_index != -1) b++;
                         indx++;
                     }
-                    if(a != 4){
+                    if (a != 4) {
                         ret = guess + ": " + to_string(a) + "A" + to_string(b) + "B";
                         /* record the number of guesses */
                         guess_count++;
-                    }else{
+                    }
+                    else{
                         ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.";
                         /* reset when Bingo */
                         abgame_started = false;
@@ -346,7 +349,8 @@ int main(int argc, char const *argv[]){
                 try {
                     if (fs::remove("todolist/" + id + ".txt")) ret = "todo deleted ( •̀ ω •́ )✧";
                     else ret = "todo does not exist (⊙ˍ⊙)";
-                }catch(...){
+                }
+                catch (...) {
                     ret = "todo deletion failed （；´д｀）ゞ";
                 }
                 event.reply(ret);
@@ -355,7 +359,7 @@ int main(int argc, char const *argv[]){
             else if (subcommand.name == "remove_all") {
                 /* remove all todos and count (id.txt excluded)*/
                 int file_count = -1;
-                for (const auto& entry: fs::directory_iterator("todolist/")){
+                for (const auto& entry: fs::directory_iterator("todolist/")) {
                     fs::remove(entry.path());
                     file_count++;
                 }
@@ -380,9 +384,9 @@ int main(int argc, char const *argv[]){
                 bool complete;
                 string id, raw_date, todo;
                 int count = 0;
-                for (const auto& entry: fs::directory_iterator("todolist/")){
+                for (const auto& entry: fs::directory_iterator("todolist/")) {
                     file_name = entry.path().string();
-                    if(file_name == "todolist/id.txt") continue;
+                    if (file_name == "todolist/id.txt") continue;
                     todo_file.open(file_name, ios::in);
                     todo_file >> complete >> id >> raw_date;
                     todo_file.ignore();
@@ -392,18 +396,19 @@ int main(int argc, char const *argv[]){
                     todos.push_back(todo_obj);
                     count++;
                 }
-                if(count){
+                if (count) {
                     std::sort(todos.begin(), todos.end(), todo_cmp);
 
                     /* add them to ret */
-                    for(auto& todo: todos){
+                    for (auto& todo: todos) {
                         ret += todo.complete?"\u2611  ":"\u2610  ";
-                        if(todo.id.length() < 2) ret += " ";
+                        if (todo.id.length() < 2) ret += " ";
                         ret += todo.id + "  " + todo.raw_date + "  " + todo.todo + "\n";
                     }
                     ret += "```";
                     event.reply(ret);
-                }else{
+                }
+                else{
                     event.reply("```No any todos! (/≧▽≦)/```");
                 }
             }
@@ -415,7 +420,7 @@ int main(int argc, char const *argv[]){
                 fstream todo_file_in("todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
-                while(getline(todo_file_in, lineBuffer)){
+                while (getline(todo_file_in, lineBuffer)) {
                     writeBuffer += lineBuffer + '\n';
                 }
                 todo_file_in.close();
@@ -433,7 +438,7 @@ int main(int argc, char const *argv[]){
                 fstream todo_file_in("todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
-                while(getline(todo_file_in, lineBuffer)){
+                while (getline(todo_file_in, lineBuffer)) {
                     writeBuffer += lineBuffer + '\n';
                 }
                 todo_file_in.close();
@@ -450,7 +455,7 @@ int main(int argc, char const *argv[]){
     bot.on_form_submit([&](const dpp::form_submit_t & event) {
         /* use custom_id to ensure which command is used*/
         string form_id = event.custom_id;
-        if(form_id == "diary"){
+        if (form_id == "diary") {
             string date = get<string>(event.components[0].components[0].value);
             string title = get<string>(event.components[1].components[0].value);
             string diary_content = get<string>(event.components[2].components[0].value);
@@ -464,7 +469,8 @@ int main(int argc, char const *argv[]){
             dpp::message m;
             m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
             event.reply(m);
-        }else if(form_id == "todo"){
+        }
+        else if (form_id == "todo") {
             string date = get<string>(event.components[0].components[0].value);
             string todo = get<string>(event.components[1].components[0].value);
 
