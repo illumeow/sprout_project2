@@ -105,13 +105,13 @@ int main(int argc, char const *argv[]) {
     /* Handle slash command */
     bot.on_slashcommand([&](const dpp::slashcommand_t& event) {
         dpp::interaction interaction = event.command;
-
-        if (interaction.get_command_name() == "ping") {
+        string command_name = interaction.get_command_name();
+        if (command_name == "ping") {
             event.reply("Pong!");
         }
 
         /* task 1.1 */
-        else if (interaction.get_command_name() == "greeting") {
+        else if (command_name == "greeting") {
             /* fetch a parameter value from the command parameters */
             string name = get<string>(event.get_parameter("username"));
             /* reply to the command */
@@ -119,28 +119,28 @@ int main(int argc, char const *argv[]) {
         }
 
         /* task 2.1 */
-        else if (interaction.get_command_name() == "add") {
+        else if (command_name == "add") {
             int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
             int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Add] The result is " + to_string(num1) + " + " + to_string(num2) + " = " +to_string(num1+num2));
         }
 
         /* task 2.2 */
-        else if (interaction.get_command_name() == "sub") {
+        else if (command_name == "sub") {
             int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
             int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Sub] The result is " + to_string(num1) + " - " + to_string(num2) + " = " +to_string(num1-num2));
         }
 
         /* task 2.3 */
-        else if (interaction.get_command_name() == "mul") {
+        else if (command_name == "mul") {
             int64_t num1 = get<int64_t>(event.get_parameter("number_1"));
             int64_t num2 = get<int64_t>(event.get_parameter("number_2"));
             event.reply("[Mul] The result is " + to_string(num1) + " * " + to_string(num2) + " = " +to_string(num1*num2));
         }
 
         /* task 3.1 */
-        else if (interaction.get_command_name() == "reset") {
+        else if (command_name == "reset") {
             /* set the answer in range [1, 100] */
             number_for_guess = rand() % 100 + 1;
             std::cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
@@ -148,7 +148,7 @@ int main(int argc, char const *argv[]) {
         }
 
         /* task 3.2 */
-        else if (interaction.get_command_name() == "guess") {
+        else if (command_name == "guess") {
             int64_t num = get<int64_t>(event.get_parameter("number_guess"));
             string ret;
             if (number_for_guess == 0) {
@@ -169,7 +169,7 @@ int main(int argc, char const *argv[]) {
         }
 
         /* task 4.1 */
-        else if (interaction.get_command_name() == "write") {
+        else if (command_name == "write") {
             /* Instantiate an interaction_modal_response object */
             dpp::interaction_modal_response modal("diary", "Please enter your diary");
             /* Add a text component */
@@ -211,7 +211,7 @@ int main(int argc, char const *argv[]) {
         }
 
         /* task 4.2 */
-        else if (interaction.get_command_name() == "read") {
+        else if (command_name == "read") {
             string date = get<string>(event.get_parameter("date"));
             fstream diary_read("diaries/" + date + ".txt", ios::in);
             if (diary_read) {
@@ -252,7 +252,7 @@ int main(int argc, char const *argv[]) {
         }
 
         /* task 4.3 */
-        else if (interaction.get_command_name() == "remove") {
+        else if (command_name == "remove") {
             string date = get<string>(event.get_parameter("date")), ret;
             try {
                 /* use std::filesystem to remove */
@@ -267,16 +267,16 @@ int main(int argc, char const *argv[]) {
         }
         
         /* custom things */
-        else if (interaction.get_command_name() == "calculator") {
+        else if (command_name == "calculator") {
             event.reply("You can use these commands for calculator:\n`/add` `/sub` `/mul`");
         }
 
-        else if (interaction.get_command_name() == "diary") {
+        else if (command_name == "diary") {
             event.reply("You can use these commands for diary:\n`/write` `/read` `/remove`");
         }
 
         // 1A2B
-        else if (interaction.get_command_name() == "1a2b") {
+        else if (command_name == "1a2b") {
             /* Get the sub command */
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "start") {
@@ -335,10 +335,45 @@ int main(int argc, char const *argv[]) {
                 abgame_started = false;
                 event.reply("Game quitted.");
             }
+
+            else if (subcommand.name == "register") {
+                string username = get<string>(event.get_parameter("username"));
+                string user_id = to_string(interaction.get_issuing_user().id);
+                fstream id2username_in("1A2B/id2username.txt", ios::in);
+                string id, name;
+                bool update = false;
+                while (id2username_in >> id >> name) {
+                    if (id == user_id) update = true;
+                }
+                id2username_in.close();
+                if (update) {
+                    string writeBuffer;
+                    id2username_in.open("1A2B/id2username.txt", ios::in);
+                    while (id2username_in >> id >> name) {
+                        if (id == user_id) name = username;
+                        writeBuffer += id + ' ' + name + '\n';
+                    }
+                    fstream id2username_out("1A2B/id2username.txt", ios::out);
+                    id2username_out << writeBuffer;
+                    id2username_out.close();
+                    event.reply("Your username is updated as `" + username + "`");
+                }
+                else {
+                    fstream id2username_out("1A2B/id2username.txt", ios::app);
+                    id2username_out << user_id << ' ' << username << '\n';
+                    id2username_out.close();
+                    event.reply("Your username is registered as `" + username + "`");
+                }
+            }
+
+            else if (subcommand.name == "scoreboard") {
+                abgame_started = false;
+                event.reply("Game quitted.");
+            }
         }
 
         // TODO List
-        else if (interaction.get_command_name() == "todo") {
+        else if (command_name == "todo") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "add") {
                 /* use dialog box */
@@ -575,6 +610,11 @@ int main(int argc, char const *argv[]) {
                 add_option(dpp::command_option(dpp::co_string, "number", "Guess a 4-digit number", true))
             );
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "quit", "Quit the current game"));
+            abgame.add_option(
+                dpp::command_option(dpp::co_sub_command, "register", "set your name").
+                add_option(dpp::command_option(dpp::co_string, "username", "Enter any custom name you want!", true))
+            );
+            abgame.add_option(dpp::command_option(dpp::co_sub_command, "scoreboard", "List all players' play records"));
             bot.global_command_create(abgame);
 
             // TODO List
