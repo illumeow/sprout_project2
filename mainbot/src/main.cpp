@@ -396,6 +396,29 @@ int main(int argc, char const *argv[]) {
 
             else if (subcommand.name == "scoreboard") {
                 string ret = "```\n  user    best play  play count\n";
+                
+                /* read all records */
+                fstream record;
+                string raw_username, raw_best_play, raw_play_count, 
+                           username,     best_play,     play_count;
+                string spaces = "        ";
+                for (const auto& entry: fs::directory_iterator("1A2B/")) {
+                    record.open(entry.path().string(), ios::in);
+                    record >> raw_username >> raw_best_play >> raw_play_count;
+                    record.close();
+                    if (raw_username.length() < 8)  username = raw_username + spaces.substr(0, 8-raw_username.length());
+                    else if (raw_username.length() > 8) username = raw_username.substr(0, 5) + "...";
+                    else username = raw_username;
+                    ret += username + "  ";
+                    if (raw_best_play == "N/A")  best_play = "   N/A   ";
+                    else if (raw_best_play.length() == 2) best_play = "   " + raw_best_play + "    ";
+                    else best_play = "    " + raw_best_play + "    ";
+                    ret += best_play + "  ";
+                    if (raw_play_count.length() > 1) play_count = "    " + raw_play_count;
+                    else play_count = "     " + raw_play_count;
+                    ret += play_count + '\n';
+                }
+
                 ret += "```";
                 event.reply(ret);
             }
