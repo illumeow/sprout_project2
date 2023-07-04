@@ -49,17 +49,26 @@ struct Date{
 };
 
 struct ToDo: public Date{
+    bool complete;
     string id, raw_date, todo;
     Date date;
-    ToDo(string id, string raw_date, string todo): id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
+    ToDo(bool complete, string id, string raw_date, string todo): 
+    complete(complete), id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
 };
 
+bool todo_cmp(ToDo& a, ToDo& b){
+    if(a.date.year != b.date.year)
+        return a.date.year < b.date.year;
+    if(a.date.month != b.date.month)
+        return a.date.month < b.date.month;
+    return a.date.day < b.date.day;
+};
 
 int main(int argc, char const *argv[]){
     /* Setup random seed */
     std::srand(std::time(NULL));
 
-    /* TODO List */
+    /* todo id initialize */
     fstream todo_id_file("todolist/id.txt", ios::in);
     int todo_id; todo_id_file >> todo_id;
     todo_id_file.close();
@@ -354,7 +363,35 @@ int main(int argc, char const *argv[]){
             }
 
             else if (subcommand.name == "ls") {
-                event.reply("```\n   id   date     todo\nstarts here\n```");
+                string ret = "```\n    id   date     todo\n";
+
+                /* read all todos and sort in chronological order */
+                vector<ToDo> todos;
+                string file_name;
+                fstream todo_file;
+                bool complete;
+                string id, raw_date, todo;
+                for (const auto& entry: fs::directory_iterator("todolist/")){
+                    file_name = entry.path().string();
+                    if(file_name == "todolist/id.txt") continue;
+                    todo_file.open(file_name, ios::in);
+                    todo_file >> complete >> id >> raw_date;
+                    todo_file.ignore();
+                    getline(todo_file, todo);
+                    todo_file.close();
+                    ToDo todo_obj(complete, id, raw_date, todo);
+                    todos.push_back(todo_obj);
+                }
+                std::sort(todos.begin(), todos.end(), todo_cmp);
+
+                /* add them to ret */
+                for(auto& todo: todos){
+                    ret += todo.complete?"\u2611  ":"\u2610  ";
+                    if(todo.id.length() < 2) ret += " ";
+                    ret += todo.id + "  " + todo.raw_date + "  " + todo.todo + "\n";
+                }
+                ret += "```";
+                event.reply(ret);
             }
 
             else if (subcommand.name == "complete") {
