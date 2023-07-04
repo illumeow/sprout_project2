@@ -401,7 +401,15 @@ int main(int argc, char const *argv[]) {
             }
 
             else if (subcommand.name == "delete") {
-
+                string user_id = to_string(interaction.get_issuing_user().id), ret;
+                try {
+                    if (fs::remove("1A2B/" + user_id + ".txt")) ret = "record deleted ╰(*°▽°*)╯";
+                    else ret = "you have no play record （；´д｀）ゞ";
+                }
+                catch (...) {
+                    ret = "record deletion failed.";
+                }
+                event.reply(ret);
             }
         }
 
@@ -442,7 +450,7 @@ int main(int argc, char const *argv[]) {
                     else ret = "todo does not exist (⊙ˍ⊙)";
                 }
                 catch (...) {
-                    ret = "todo deletion failed （；´д｀）ゞ";
+                    ret = "todo deletion failed.";
                 }
                 event.reply(ret);
             }
