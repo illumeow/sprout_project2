@@ -42,6 +42,7 @@ bool is_valid_date(const string& s) {
 vector<int> abgame_answer;
 bool abgame_started = false;
 int guess_count;
+dpp::snowflake user_playing;
 
 struct PlayRecord{
     int best_play_int;
@@ -96,15 +97,31 @@ bool todo_cmp(const ToDo& a, const ToDo& b) {
     return a.date.day < b.date.day;
 };
 
+/* random jokes */
+vector<string> jokes;
+string latest_joke = "";
+
+string get_random_joke() {
+    return jokes[rand() % jokes.size()];
+}
+
+
+
 int main(int argc, char const *argv[]) {
     /* Setup random seed */
     std::srand(std::time(NULL));
 
     /* todo id initialize */
-    fstream todo_id_file("todolist/id.txt", ios::in);
+    fstream todo_id_file("myfiles/todolist/id.txt", ios::in);
     int todo_id; todo_id_file >> todo_id;
     todo_id_file.close();
     cout << "todo id: " << todo_id << '\n';
+
+    /* jokes initialize */
+    fstream joke_file("myfiles/joke.txt", ios::in);
+    string line;
+    while (getline(joke_file, line)) jokes.push_back(line);
+    joke_file.close(); 
 
     /* Setup the bot */
     dpp::cluster bot(TOKEN);
@@ -223,7 +240,7 @@ int main(int argc, char const *argv[]) {
         /* task 4.2 */
         else if (command_name == "read") {
             string date = get<string>(event.get_parameter("date"));
-            fstream diary_read("diaries/" + date + ".txt", ios::in);
+            fstream diary_read("myfiles/diaries/" + date + ".txt", ios::in);
             if (diary_read) {
                 string title, line, contents = "";
                 getline(diary_read, title);
@@ -266,7 +283,7 @@ int main(int argc, char const *argv[]) {
             string date = get<string>(event.get_parameter("date")), ret;
             try {
                 /* use std::filesystem to remove */
-                if (fs::remove("diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
+                if (fs::remove("myfiles/diaries/" + date + ".txt")) ret = "Diary deleted successfully :)";
                 else ret = "Diary deletion failed :(";
             }
             catch (...) {
@@ -297,15 +314,20 @@ int main(int argc, char const *argv[]) {
                 cout << "1A2B answer: ";
                 int n;
                 for (int i=0; i<4; i++) {
-                    do{
+                    do {
                         /* number in [0, 9] */
                         n = rand() % 10;
-                    }while (chose[n]);
+                    } while (chose[n]);
                     abgame_answer[n] = i;
                     chose[n] = true;
                     cout << n;
                 }
                 cout << '\n';
+
+                /* get current playing user */
+                user_playing = interaction.get_issuing_user().id;
+
+                /* reset game settings */
                 abgame_started = true;
                 guess_count = 0;
                 event.reply("New game started!");
@@ -313,65 +335,70 @@ int main(int argc, char const *argv[]) {
             
             else if (subcommand.name == "guess") {
                 string ret, guess = get<string>(event.get_parameter("number"));
-                bool valid = true;
-                /* check if input is valid or is game started */
-                if ((guess.length() != 4) || (!is_number(guess)) || is_repeated(guess)) valid = false;
-                if (!abgame_started) ret = "Please start a new game first.";
-                else if (!valid) ret = "Not a valid guess.";
-                /* counting the A and B */
-                else{
-                    int a = 0, b = 0, indx = 0;
-                    for (auto& i: guess) {
-                        int answer_index = abgame_answer[i - '0'];
-                        if (answer_index == indx) a++;
-                        else if (answer_index != -1) b++;
-                        indx++;
-                    }
-                    if (a != 4) {
-                        ret = guess + ": " + to_string(a) + "A" + to_string(b) + "B";
-                        /* record the number of guesses */
-                        guess_count++;
-                    }
+                dpp::snowflake user = interaction.get_issuing_user().id;
+                if(user != user_playing && !user_playing.empty()) event.reply("You aren't the user who started this game.");
+                else {
+                    bool valid = true;
+                    /* check if input is valid or is game started */
+                    if ((guess.length() != 4) || (!is_number(guess)) || is_repeated(guess)) valid = false;
+                    if (!abgame_started) ret = "Please start a new game first.";
+                    else if (!valid) ret = "Not a valid guess.";
+                    /* counting the A and B */
                     else{
-                        ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.\n";
-                        
-                        /* update record */
-                        string user_id = to_string(interaction.get_issuing_user().id);
-                        /* if registered */
-                        if (fs::exists("1A2B/" + user_id + ".txt")) {
-                            fstream record;
-                            string username, best_play, play_count, writeBuffer;
-                            record.open("1A2B/" + user_id + ".txt", ios::in);
-                            record >> username >> best_play >> play_count;
-                            record.close();
-                            if (best_play == "N/A") {
-                                ret += "Best Play Updated!";
-                                writeBuffer +=  username + ' ' + to_string(guess_count+1) + " 1";
-                            }
-                            else {
-                                if(guess_count+1 < stoi(best_play)) {
+                        int a = 0, b = 0, indx = 0;
+                        for (auto& i: guess) {
+                            int answer_index = abgame_answer[i - '0'];
+                            if (answer_index == indx) a++;
+                            else if (answer_index != -1) b++;
+                            indx++;
+                        }
+                        if (a != 4) {
+                            ret = guess + ": " + to_string(a) + "A" + to_string(b) + "B";
+                            /* record the number of guesses */
+                            guess_count++;
+                        }
+                        else{
+                            ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.\n";
+                            
+                            /* update record */
+                            string user_id = to_string(interaction.get_issuing_user().id);
+                            /* if registered */
+                            if (fs::exists("myfiles/1A2B/" + user_id + ".txt")) {
+                                fstream record;
+                                string username, best_play, play_count, writeBuffer;
+                                record.open("myfiles/1A2B/" + user_id + ".txt", ios::in);
+                                record >> username >> best_play >> play_count;
+                                record.close();
+                                if (best_play == "N/A") {
                                     ret += "Best Play Updated!";
-                                    writeBuffer +=  username + ' ' + to_string(guess_count+1) + ' ' + to_string(stoi(play_count)+1);
+                                    writeBuffer +=  username + ' ' + to_string(guess_count+1) + " 1";
                                 }
                                 else {
-                                    ret += "Good luck on next game!";
-                                    writeBuffer +=  username + ' ' + best_play + ' ' + to_string(stoi(play_count)+1);
+                                    if(guess_count+1 < stoi(best_play)) {
+                                        ret += "Best Play Updated!";
+                                        writeBuffer +=  username + ' ' + to_string(guess_count+1) + ' ' + to_string(stoi(play_count)+1);
+                                    }
+                                    else {
+                                        ret += "Good luck on next game!";
+                                        writeBuffer +=  username + ' ' + best_play + ' ' + to_string(stoi(play_count)+1);
+                                    }
                                 }
+                                record.open("myfiles/1A2B/" + user_id + ".txt", ios::out);
+                                record << writeBuffer;
+                                record.close();
                             }
-                            record.open("1A2B/" + user_id + ".txt", ios::out);
-                            record << writeBuffer;
-                            record.close();
-                        }
-                        /* anonymous user */
-                        else {
-                           ret += "This game isn't record because you haven't register yet.";
-                        }
+                            /* anonymous user */
+                            else {
+                            ret += "This game isn't record because you haven't register yet.";
+                            }
 
-                        /* reset when Bingo */
-                        abgame_started = false;
+                            /* reset when Bingo */
+                            user_playing = 0;
+                            abgame_started = false;
+                        }
                     }
+                    event.reply(ret);
                 }
-                event.reply(ret);
             }
             
             else if (subcommand.name == "quit") {
@@ -385,19 +412,19 @@ int main(int argc, char const *argv[]) {
                 fstream record;
                 
                 /* an update */
-                if (fs::exists("1A2B/" + user_id + ".txt")) {
+                if (fs::exists("myfiles/1A2B/" + user_id + ".txt")) {
                     string old_name, best_play, play_count;
-                    record.open("1A2B/" + user_id + ".txt", ios::in);
+                    record.open("myfiles/1A2B/" + user_id + ".txt", ios::in);
                     record >> old_name >> best_play >> play_count;
                     record.close();
-                    record.open("1A2B/" + user_id + ".txt", ios::out);
+                    record.open("myfiles/1A2B/" + user_id + ".txt", ios::out);
                     record << username << ' ' << best_play << ' ' << play_count;
                     record.close();
                     event.reply("Your username has been updated from `" + old_name + "` to `" + username + "`");
                 }
                 /* new register */
                 else {
-                    record.open("1A2B/" + user_id + ".txt", ios::out);
+                    record.open("myfiles/1A2B/" + user_id + ".txt", ios::out);
                     record << username << ' ' << "N/A N/A\n";
                     record.close();
                     event.reply("Your username is registered as `" + username + "`");
@@ -412,7 +439,7 @@ int main(int argc, char const *argv[]) {
                 string file_name;
                 fstream record_file;
                 string username, best_play, play_count;
-                for (const auto& entry: fs::directory_iterator("1A2B/")) {
+                for (const auto& entry: fs::directory_iterator("myfiles/1A2B/")) {
                     file_name = entry.path().string();
                     record_file.open(file_name, ios::in);
                     record_file >> username >> best_play >> play_count;
@@ -452,7 +479,7 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "delete") {
                 string user_id = to_string(interaction.get_issuing_user().id), ret;
                 try {
-                    if (fs::remove("1A2B/" + user_id + ".txt")) ret = "record deleted ╰(*°▽°*)╯";
+                    if (fs::remove("myfiles/1A2B/" + user_id + ".txt")) ret = "record deleted ╰(*°▽°*)╯";
                     else ret = "you have no play record （；´д｀）ゞ";
                 }
                 catch (...) {
@@ -495,7 +522,7 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "remove") {
                 string id = get<string>(event.get_parameter("id")), ret;
                 try {
-                    if (fs::remove("todolist/" + id + ".txt")) ret = "todo deleted ( •̀ ω •́ )✧";
+                    if (fs::remove("myfiles/todolist/" + id + ".txt")) ret = "todo deleted ( •̀ ω •́ )✧";
                     else ret = "todo does not exist (⊙ˍ⊙)";
                 }
                 catch (...) {
@@ -507,13 +534,13 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "remove_all") {
                 /* remove all todos and count (id.txt excluded)*/
                 int file_count = -1;
-                for (const auto& entry: fs::directory_iterator("todolist/")) {
+                for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
                     fs::remove(entry.path());
                     file_count++;
                 }
 
                 /* reset todo id */
-                fstream id_file("todolist/id.txt", ios::out);
+                fstream id_file("myfiles/todolist/id.txt", ios::out);
                 id_file << "0";
                 id_file.close();
                 todo_id = 0;
@@ -535,9 +562,9 @@ int main(int argc, char const *argv[]) {
                 bool complete;
                 string id, raw_date, todo;
                 int count = 0;
-                for (const auto& entry: fs::directory_iterator("todolist/")) {
+                for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
                     file_name = entry.path().string();
-                    if (file_name == "todolist/id.txt") continue;
+                    if (file_name == "myfiles/todolist/id.txt") continue;
                     todo_file.open(file_name, ios::in);
                     todo_file >> complete >> id >> raw_date;
                     todo_file.ignore();
@@ -569,7 +596,7 @@ int main(int argc, char const *argv[]) {
                 string id = get<string>(event.get_parameter("id"));
 
                 /* use buffer to contain the data */
-                fstream todo_file_in("todolist/" + id + ".txt", ios::in);
+                fstream todo_file_in("myfiles/todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
                 while (getline(todo_file_in, lineBuffer)) {
@@ -578,7 +605,7 @@ int main(int argc, char const *argv[]) {
                 todo_file_in.close();
 
                 /* write the buffer and change [complete] at the same time */
-                fstream todo_file_out("todolist/" + id + ".txt", ios::out);
+                fstream todo_file_out("myfiles/todolist/" + id + ".txt", ios::out);
                 todo_file_out << "1\n" << writeBuffer;
                 todo_file_out.close();
                 event.reply("Marked `" + id + "` as complete ヾ(≧▽≦*)o");
@@ -587,7 +614,7 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "incomplete") {
                 string id = get<string>(event.get_parameter("id"));
 
-                fstream todo_file_in("todolist/" + id + ".txt", ios::in);
+                fstream todo_file_in("myfiles/todolist/" + id + ".txt", ios::in);
                 string writeBuffer, lineBuffer;
                 getline(todo_file_in, lineBuffer);
                 while (getline(todo_file_in, lineBuffer)) {
@@ -595,10 +622,55 @@ int main(int argc, char const *argv[]) {
                 }
                 todo_file_in.close();
 
-                fstream todo_file_out("todolist/" + id + ".txt", ios::out);
+                fstream todo_file_out("myfiles/todolist/" + id + ".txt", ios::out);
                 todo_file_out << "0\n" << writeBuffer;
                 todo_file_out.close();
                 event.reply("Marked `" + id + "` as incomplete ~(>_<。)\\");
+            }
+        }
+
+        else if (command_name == "joke") {
+            auto subcommand = interaction.get_command_interaction().options[0];
+            if (subcommand.name == "get") {
+                string joke;
+                do {
+                    joke = get_random_joke();
+                } while (joke == latest_joke);
+                latest_joke = joke;
+                event.reply(joke);
+            }
+
+            else if (subcommand.name == "add") {
+                string joke = get<string>(event.get_parameter("joke"));
+                fstream joke_file("myfiles/joke.txt", ios::app);
+                joke_file << joke << '\n';
+                joke_file.close();
+                event.reply("Joke added ㄟ(≧◇≦)ㄏ");
+            }
+
+            else if (subcommand.name == "remove") {
+                fstream joke_file;
+
+                joke_file.open("myfiles/joke.txt", ios::in);
+                string writeBuffer, lineBuffer;
+                while (getline(joke_file, lineBuffer)) {
+                    if (lineBuffer != latest_joke) writeBuffer += lineBuffer;
+                }
+                joke_file.close();
+
+                joke_file.open("myfiles/joke.txt", ios::out);
+                joke_file << writeBuffer << '\n';
+                joke_file.close();
+
+                event.reply("Removed joke: " + latest_joke);
+            }
+
+            else if (subcommand.name == "update") {
+                fstream joke_file("myfiles/joke.txt", ios::in);
+                string line;
+                while (getline(joke_file, line)) jokes.push_back(line);
+                joke_file.close();
+                event.reply("Jokes updated!");
             }
         }
     });
@@ -614,7 +686,7 @@ int main(int argc, char const *argv[]) {
 
             if(is_valid_date(date)) {
                  /* save it */
-                fstream diary_write("diaries/" + date + ".txt", ios::out);
+                fstream diary_write("myfiles/diaries/" + date + ".txt", ios::out);
                 diary_write << title << '\n' << diary_content;
                 diary_write.close();
 
@@ -632,10 +704,10 @@ int main(int argc, char const *argv[]) {
             if(is_valid_date(date)) {
                 /* update todo_id and save it */
                 todo_id++;
-                fstream id_file("todolist/id.txt", ios::out);
+                fstream id_file("myfiles/todolist/id.txt", ios::out);
                 id_file << todo_id;
                 id_file.close();
-                fstream todo_add("todolist/" + to_string(todo_id) + ".txt", ios::out);
+                fstream todo_add("myfiles/todolist/" + to_string(todo_id) + ".txt", ios::out);
                 todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo << '\n';
                 todo_add.close();
 
@@ -645,7 +717,6 @@ int main(int argc, char const *argv[]) {
             }
             else event.reply("[TODO] date is invalid");
         }
-        
     });
 
     bot.on_ready([&bot](const dpp::ready_t& event) {
@@ -727,6 +798,17 @@ int main(int argc, char const *argv[]) {
                 add_option(dpp::command_option(dpp::co_string, "id", "Enter the id of it", true))
             );
             bot.global_command_create(todo);
+
+            // random jokes
+            dpp::slashcommand joke("joke", "jokes!", bot.me.id);
+            joke.add_option(dpp::command_option(dpp::co_sub_command, "get", "Get a random joke"));
+            joke.add_option(
+                dpp::command_option(dpp::co_sub_command, "add", "Add your own joke").
+                add_option(dpp::command_option(dpp::co_string, "joke", "Enter your own joke", true))
+            );
+            joke.add_option(dpp::command_option(dpp::co_sub_command, "remove", "Remove the last joke"));
+            joke.add_option(dpp::command_option(dpp::co_sub_command, "update", "Update the jokes"));
+            bot.global_command_create(joke);
         }
     });
 
