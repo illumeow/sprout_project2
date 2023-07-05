@@ -1,5 +1,6 @@
 #include <templatebot/templatebot.h>
 #include <config.h>
+#include <limits.h>
 
 using std::cout;
 using std::string;
@@ -42,6 +43,15 @@ vector<int> abgame_answer;
 bool abgame_started = false;
 int guess_count;
 
+struct PlayRecord{
+    int best_play_int;
+    string username, best_play, play_count;
+    PlayRecord(string username, string best_play, string play_count):
+    username(username), best_play(best_play), play_count(play_count){
+        best_play_int = (best_play == "N/A")?INT_MAX:stoi(best_play);
+    };
+};
+
 /* check if a string is a number */
 bool is_number(const string& s) {
     string::const_iterator it = s.begin();
@@ -78,7 +88,7 @@ struct ToDo: public Date{
     complete(complete), id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
 };
 
-bool todo_cmp(ToDo& a, ToDo& b) {
+bool todo_cmp(const ToDo& a, const ToDo& b) {
     if (a.date.year != b.date.year)
         return a.date.year < b.date.year;
     if (a.date.month != b.date.month)
@@ -398,27 +408,43 @@ int main(int argc, char const *argv[]) {
                 string ret = "```\n  user    best play  play count\n";
                 
                 /* read all records */
-                fstream record;
-                string raw_username, raw_best_play, raw_play_count, 
-                           username,     best_play,     play_count;
-                string spaces = "        ";
+                vector<PlayRecord> records;
+                string file_name;
+                fstream record_file;
+                string username, best_play, play_count;
                 for (const auto& entry: fs::directory_iterator("1A2B/")) {
-                    record.open(entry.path().string(), ios::in);
-                    record >> raw_username >> raw_best_play >> raw_play_count;
-                    record.close();
-                    if (raw_username.length() < 8)  username = raw_username + spaces.substr(0, 8-raw_username.length());
-                    else if (raw_username.length() > 8) username = raw_username.substr(0, 5) + "...";
-                    else username = raw_username;
-                    ret += username + "  ";
-                    if (raw_best_play == "N/A")  best_play = "   N/A   ";
-                    else if (raw_best_play.length() == 2) best_play = "   " + raw_best_play + "    ";
-                    else best_play = "    " + raw_best_play + "    ";
-                    ret += best_play + "  ";
-                    if (raw_play_count.length() > 1) play_count = "    " + raw_play_count;
-                    else play_count = "     " + raw_play_count;
-                    ret += play_count + '\n';
+                    file_name = entry.path().string();
+                    record_file.open(file_name, ios::in);
+                    record_file >> username >> best_play >> play_count;
+                    record_file.close();
+                    PlayRecord record(username, best_play, play_count);
+                    records.push_back(record);
                 }
 
+                /* sort by best_play */
+                std::sort(records.begin(), records.end(),
+                          [](const PlayRecord& a, const PlayRecord& b) {
+                            return a.best_play_int < b.best_play_int;
+                        });
+
+                /* add them to ret */
+                string spaces = "        ";
+                for(auto& record: records){
+                    // username
+                    if (record.username.length() < 8)  username = record.username + spaces.substr(0, 8-record.username.length());
+                    else if (record.username.length() > 8) username = record.username.substr(0, 5) + "...";
+                    else username = record.username;
+                    ret += username + "  ";
+                    // best play
+                    if (record.best_play == "N/A")  best_play = "   N/A   ";
+                    else if (record.best_play.length() == 2) best_play = "   " + record.best_play + "    ";
+                    else best_play = "    " + record.best_play + "    ";
+                    ret += best_play + "  ";
+                    // play count
+                    if (record.play_count.length() > 1) play_count = "    " + record.play_count;
+                    else play_count = "     " + record.play_count;
+                    ret += play_count + '\n';
+                }
                 ret += "```";
                 event.reply(ret);
             }
@@ -502,7 +528,7 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "ls") {
                 string ret = "```\n    id   date     todo\n";
 
-                /* read all todos and sort in chronological order */
+                /* read all todos */
                 vector<ToDo> todos;
                 string file_name;
                 fstream todo_file;
@@ -522,6 +548,7 @@ int main(int argc, char const *argv[]) {
                     count++;
                 }
                 if (count) {
+                    /* sort in chronological order */
                     std::sort(todos.begin(), todos.end(), todo_cmp);
 
                     /* add them to ret */
