@@ -42,7 +42,7 @@ bool is_valid_date(const string& s) {
 vector<int> abgame_answer;
 bool abgame_started = false;
 int guess_count;
-dpp::snowflake user_playing;
+dpp::snowflake user_playing(0);
 
 struct PlayRecord{
     int best_play_int;
@@ -105,7 +105,8 @@ string get_random_joke() {
     return jokes[rand() % jokes.size()];
 }
 
-
+/* go wash dishes */
+int dishes_count = 0;
 
 int main(int argc, char const *argv[]) {
     /* Setup random seed */
@@ -307,30 +308,37 @@ int main(int argc, char const *argv[]) {
             /* Get the sub command */
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "start") {
-                /* reset abgame_answer */
-                abgame_answer.clear();
-                for (int i=0; i<10; i++) abgame_answer.push_back(-1);
-                bool chose[10] = {};
-                cout << "1A2B answer: ";
-                int n;
-                for (int i=0; i<4; i++) {
-                    do {
-                        /* number in [0, 9] */
-                        n = rand() % 10;
-                    } while (chose[n]);
-                    abgame_answer[n] = i;
-                    chose[n] = true;
-                    cout << n;
+                if (user_playing.empty()) {
+                    /* reset abgame_answer */
+                    abgame_answer.clear();
+                    for (int i=0; i<10; i++) abgame_answer.push_back(-1);
+                    bool chose[10] = {};
+                    cout << "1A2B answer: ";
+                    int n;
+                    for (int i=0; i<4; i++) {
+                        do {
+                            /* number in [0, 9] */
+                            n = rand() % 10;
+                        } while (chose[n]);
+                        abgame_answer[n] = i;
+                        chose[n] = true;
+                        cout << n;
+                    }
+                    cout << '\n';
+
+                    /* reset game settings */
+                    abgame_started = true;
+                    guess_count = 0;
+
+                    /* get current playing user */
+                    user_playing = interaction.get_issuing_user().id;
+                    
+                    event.reply("New game started!");
                 }
-                cout << '\n';
-
-                /* get current playing user */
-                user_playing = interaction.get_issuing_user().id;
-
-                /* reset game settings */
-                abgame_started = true;
-                guess_count = 0;
-                event.reply("New game started!");
+                /* someone is playing */
+                else {
+                    event.reply("The game has been started.");
+                }
             }
             
             else if (subcommand.name == "guess") {
@@ -389,12 +397,13 @@ int main(int argc, char const *argv[]) {
                             }
                             /* anonymous user */
                             else {
-                            ret += "This game isn't record because you haven't register yet.";
+                                ret += "This game isn't record because you haven't register yet.";
                             }
 
                             /* reset when Bingo */
-                            user_playing = 0;
                             abgame_started = false;
+                            guess_count = 0;
+                            user_playing = 0;
                         }
                     }
                     event.reply(ret);
@@ -402,8 +411,15 @@ int main(int argc, char const *argv[]) {
             }
             
             else if (subcommand.name == "quit") {
-                abgame_started = false;
-                event.reply("Game quitted.");
+                dpp::snowflake user = interaction.get_issuing_user().id;
+                if(user != user_playing && !user_playing.empty()) event.reply("You aren't the user who started this game.");
+                else {
+                    /* reset */
+                    abgame_started = false;
+                    guess_count = 0;
+                    user_playing = 0;
+                    event.reply("Game quitted.");
+                }
             }
 
             else if (subcommand.name == "register") {
@@ -432,7 +448,6 @@ int main(int argc, char const *argv[]) {
             }
 
             else if (subcommand.name == "scoreboard") {
-                string ret = "```\n  user    best play  play count\n";
                 
                 /* read all records */
                 vector<PlayRecord> records;
@@ -454,26 +469,17 @@ int main(int argc, char const *argv[]) {
                             return a.best_play_int < b.best_play_int;
                         });
 
-                /* add them to ret */
-                string spaces = "        ";
-                for(auto& record: records){
-                    // username
-                    if (record.username.length() < 8)  username = record.username + spaces.substr(0, 8-record.username.length());
-                    else if (record.username.length() > 8) username = record.username.substr(0, 5) + "...";
-                    else username = record.username;
-                    ret += username + "  ";
-                    // best play
-                    if (record.best_play == "N/A")  best_play = "   N/A   ";
-                    else if (record.best_play.length() == 2) best_play = "   " + record.best_play + "    ";
-                    else best_play = "    " + record.best_play + "    ";
-                    ret += best_play + "  ";
-                    // play count
-                    if (record.play_count.length() > 1) play_count = "    " + record.play_count;
-                    else play_count = "     " + record.play_count;
-                    ret += play_count + '\n';
-                }
-                ret += "```";
-                event.reply(ret);
+                /* add them to embed */
+                dpp::embed embed = dpp::embed().
+                    set_color(0xFFA5CE).
+                    set_title("1A2B Scoreboard");
+
+                for(auto& record: records)
+                    embed.add_field(record.username, "best play: " + record.best_play + "\nplay count: " + record.play_count);    
+
+                dpp::message m;
+                m.add_embed(embed);
+                event.reply(m);
             }
 
             else if (subcommand.name == "delete") {
@@ -668,9 +674,42 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "update") {
                 fstream joke_file("myfiles/joke.txt", ios::in);
                 string line;
+                jokes.clear();
                 while (getline(joke_file, line)) jokes.push_back(line);
                 joke_file.close();
                 event.reply("Jokes updated!");
+            }
+        }
+
+        else if (command_name == "go_washing_dishes") {
+            string ret;
+            if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
+            else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
+            else if (dishes_count == 2) ret = "你一直講煩不煩啊 (｡ŏ_ŏ)";
+            else ret = "小心我宰了你喔 (╬ﾟдﾟ)▄︻┻┳═一";
+            dishes_count++;
+            if (dishes_count == 4) dishes_count = 0;
+            event.reply(ret);
+        }
+
+        else if (command_name == "today_in_history") {
+            string date = get<string>(event.get_parameter("date"));
+            if(is_valid_date("2000" + date)) {
+                fstream today_in_history("myfiles/today_in_history/" + date + ".txt", ios::in);
+                if (today_in_history) {
+                    string line;
+                    getline(today_in_history, line);
+                    today_in_history.close();
+
+                    dpp::embed embed = dpp::embed().set_title(line);
+                    
+                    dpp::message m;
+                    m.add_embed(embed);
+                    event.reply(m);
+                }
+            }
+			else {
+                event.reply("Invalid date!");
             }
         }
     });
@@ -809,6 +848,14 @@ int main(int argc, char const *argv[]) {
             joke.add_option(dpp::command_option(dpp::co_sub_command, "remove", "Remove the last joke"));
             joke.add_option(dpp::command_option(dpp::co_sub_command, "update", "Update the jokes"));
             bot.global_command_create(joke);
+
+            // go wash dishes!
+            bot.global_command_create(dpp::slashcommand("go_washing_dishes", "command your slave~", bot.me.id));
+
+            // today in history
+            dpp::slashcommand today_in_history("today_in_history", "today in history", bot.me.id);
+            today_in_history.add_option(dpp::command_option(dpp::co_string, "date", "Please enter a date (MMDD)", true));
+            bot.global_command_create(today_in_history);
         }
     });
 
