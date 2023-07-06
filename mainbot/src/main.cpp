@@ -10,6 +10,7 @@ using std::to_string;
 using std::fstream;
 using std::ios;
 using std::vector;
+using std::time;
 namespace fs = std::filesystem;
 
 
@@ -71,6 +72,60 @@ bool is_repeated(const string& s) {
 }
 
 /* TODO List */
+bool todo_ls_used = false;
+vector<string> encourage_words = {
+    "Every noble work is at first impossible",
+    "This is tough, but you're tougher",
+    "Limit your 'always' and your 'nevers'",
+    "It's never too late to be what you might have been",
+    "People say nothing is impossible, I do nothing"
+};
+
+string get_random_words() {
+    return encourage_words[rand() % encourage_words.size()];
+}
+
+vector<string> split(const string& s, const string& delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> ret;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        ret.push_back (token);
+    }
+
+    ret.push_back (s.substr (pos_start));
+    return ret;
+}
+
+vector<int> id_parser(const string& id) {
+    vector<int> ret;
+    vector<string> numbers;
+
+    /* 1,3,4,6 */
+    if (id.find(',') != std::string::npos) {
+        numbers = split(id, ",");
+        for(auto& number: numbers)
+            ret.push_back(stoi(number));
+    }
+    /* 3-5 */
+    else if (id.find('-') != std::string::npos) {
+        numbers = split(id, "-");
+        int start = stoi(numbers[0]), end = stoi(numbers[1]);
+        for(int i=start; i<=end; i++)
+            ret.push_back(i);
+    }
+    /* single id */
+    else {
+        if(!is_number(id)) ret.push_back(-1);
+        else ret.push_back(stoi(id));
+    }
+
+    return ret;
+}
+
 struct Date{
     int year, month, day;
     Date(){};
@@ -83,11 +138,13 @@ struct Date{
 
 struct ToDo: public Date{
     bool complete;
-    string id, raw_date, todo;
+    string unique_id, raw_date, todo;
     Date date;
-    ToDo(bool complete, string id, string raw_date, string todo): 
-    complete(complete), id(id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
+    ToDo(bool complete, string unique_id, string raw_date, string todo): 
+    complete(complete), unique_id(unique_id), raw_date(raw_date), todo(todo), date(Date(raw_date)){};
 };
+
+vector<ToDo> todos;
 
 bool todo_cmp(const ToDo& a, const ToDo& b) {
     if (a.date.year != b.date.year)
@@ -109,26 +166,26 @@ string get_random_joke() {
 int dishes_count = 0;
 
 int main(int argc, char const *argv[]) {
-    /* Setup random seed */
-    std::srand(std::time(NULL));
-
-    /* todo id initialize */
-    fstream todo_id_file("myfiles/todolist/id.txt", ios::in);
-    int todo_id; todo_id_file >> todo_id;
-    todo_id_file.close();
-    cout << "todo id: " << todo_id << '\n';
-
-    /* jokes initialize */
-    fstream joke_file("myfiles/joke.txt", ios::in);
-    string line;
-    while (getline(joke_file, line)) jokes.push_back(line);
-    joke_file.close(); 
-
     /* Setup the bot */
     dpp::cluster bot(TOKEN);
 
     /* Output simple log messages to stdout */
     bot.on_log(dpp::utility::cout_logger());
+
+    /* Setup random seed */
+    std::srand(time(0));
+
+    /* todo id initialize */
+    fstream todo_id_file("myfiles/todolist/unique_id.txt", ios::in);
+    int todo_unique_id; todo_id_file >> todo_unique_id;
+    todo_id_file.close();
+    cout << "todo unique_id: " << todo_unique_id << '\n';
+
+    /* jokes initialize */
+    fstream joke_file("myfiles/joke.txt", ios::in);
+    string line;
+    while (getline(joke_file, line)) jokes.push_back(line);
+    joke_file.close();
 
     /* Handle slash command */
     bot.on_slashcommand([&](const dpp::slashcommand_t& event) {
@@ -525,16 +582,116 @@ int main(int argc, char const *argv[]) {
                 event.dialog(modal);
             }
             
+            else if (subcommand.name == "ls") {
+                /* make remove, complete, incomplete valid */
+                todo_ls_used = true;
+
+                /* read all todos */
+                todos.clear();
+                string file_name;
+                fstream todo_file;
+                bool complete;
+                string unique_id, raw_date, todo;
+                int count = 0;
+                for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
+                    file_name = entry.path().string();
+                    if (file_name == "myfiles/todolist/unique_id.txt") continue;
+                    todo_file.open(file_name, ios::in);
+                    todo_file >> complete >> unique_id >> raw_date;
+                    todo_file.ignore();
+                    getline(todo_file, todo);
+                    todo_file.close();
+                    ToDo todo_obj(complete, unique_id, raw_date, todo);
+                    todos.push_back(todo_obj);
+                    count++;
+                }
+
+                dpp::embed embed = dpp::embed().
+                    set_color(0xF4A0A0).
+                    set_title("TODO List").
+                    set_description(get_random_words());
+
+                if (count) {
+                    /* sort in chronological order */
+                    std::sort(todos.begin(), todos.end(), todo_cmp);
+
+                    /* add them to ret */
+                    int id = 1;
+                    for (auto& todo: todos) {
+                        string field_name = "", field_value = "- ";
+                        field_name += todo.complete?"\u2611   ":"\u2610   ";
+                        field_name += to_string(id++) + ". " + todo.todo;
+                        field_value += todo.raw_date;
+                        embed.add_field(field_name, field_value);
+                    }
+                }
+                else{
+                    embed.add_field(
+                        "No any todos! (/≧▽≦)/",
+                        ""
+                    );
+                }
+
+                dpp::message m;
+                m.add_embed(embed);
+                event.reply(m);
+            }
+
             else if (subcommand.name == "remove") {
-                string id = get<string>(event.get_parameter("id")), ret;
-                try {
-                    if (fs::remove("myfiles/todolist/" + id + ".txt")) ret = "todo deleted ( •̀ ω •́ )✧";
-                    else ret = "todo does not exist (⊙ˍ⊙)";
+                if(!todo_ls_used) event.reply("Please list all todos first.");
+                else {
+                    string id = get<string>(event.get_parameter("id")), ret;
+                    todo_ls_used = false;
+                    /* all completes */
+                    if (id == "c") {
+                        for(auto& todo: todos){
+                            if (todo.complete) {
+                                try {
+                                    fs::remove("myfiles/todolist/" + todo.unique_id + ".txt");
+                                }
+                                catch (...) {
+                                    event.reply("Remove failed");
+                                }
+                            }
+                        }
+                        ret = "Removed all completes ( •̀ ω •́ )✧";
+                    }
+                    /* all incompletes */
+                    else if (id == "i") {
+                        for(auto& todo: todos){
+                            if (!todo.complete) {
+                                try {
+                                    fs::remove("myfiles/todolist/" + todo.unique_id + ".txt");
+                                }
+                                catch (...) {
+                                    event.reply("Remove failed");
+                                }
+                            }
+                        }
+                        ret = "Removed all incompletes ( •̀ ω •́ )✧";
+                    }
+                    /* specified id */
+                    else {
+                        vector<int> ids = id_parser(id);
+                        if (ids[0] != -1) {
+                            ret = "Removed ";
+                            for(auto& i: ids){
+                                try {
+                                    fs::remove("myfiles/todolist/" + todos[i-1].unique_id + ".txt");
+                                    ret += to_string(i) + ". ";
+                                }
+                                catch (...) {
+                                    event.reply("Remove failed");
+                                }
+                            }
+                            ret += "( •̀ ω •́ )✧";
+                        }
+                        else {
+                            ret = "invalid id (´。＿。｀)";
+                        }
+                    }
+                    event.reply(ret);
                 }
-                catch (...) {
-                    ret = "todo deletion failed.";
-                }
-                event.reply(ret);
             }
             
             else if (subcommand.name == "remove_all") {
@@ -546,10 +703,10 @@ int main(int argc, char const *argv[]) {
                 }
 
                 /* reset todo id */
-                fstream id_file("myfiles/todolist/id.txt", ios::out);
+                fstream id_file("myfiles/todolist/unique_id.txt", ios::out);
                 id_file << "0";
                 id_file.close();
-                todo_id = 0;
+                todo_unique_id = 0;
 
                 if (file_count) {
                     string s_or_not = file_count>1?" todos ":" todo ";
@@ -558,80 +715,118 @@ int main(int argc, char const *argv[]) {
                 else event.reply("There are no todos to be removed ( ´▽` )ﾉ");
             }
 
-            else if (subcommand.name == "ls") {
-                string ret = "```\n    id   date     todo\n";
+            else if (subcommand.name == "complete") {
+                if(!todo_ls_used) event.reply("Please list all todos first.");
+                else {
+                    string id = get<string>(event.get_parameter("id")), ret;
+                    todo_ls_used = false;
+                    /* all incompletes */
+                    if (id == "i") {
+                        for(auto& todo: todos){
+                            if (!todo.complete) {
+                                /* use buffer to contain the data */
+                                fstream todo_file_in("myfiles/todolist/" + todo.unique_id + ".txt", ios::in);
+                                string writeBuffer, lineBuffer;
+                                getline(todo_file_in, lineBuffer);
+                                while (getline(todo_file_in, lineBuffer)) {
+                                    writeBuffer += lineBuffer + '\n';
+                                }
+                                todo_file_in.close();
 
-                /* read all todos */
-                vector<ToDo> todos;
-                string file_name;
-                fstream todo_file;
-                bool complete;
-                string id, raw_date, todo;
-                int count = 0;
-                for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
-                    file_name = entry.path().string();
-                    if (file_name == "myfiles/todolist/id.txt") continue;
-                    todo_file.open(file_name, ios::in);
-                    todo_file >> complete >> id >> raw_date;
-                    todo_file.ignore();
-                    getline(todo_file, todo);
-                    todo_file.close();
-                    ToDo todo_obj(complete, id, raw_date, todo);
-                    todos.push_back(todo_obj);
-                    count++;
-                }
-                if (count) {
-                    /* sort in chronological order */
-                    std::sort(todos.begin(), todos.end(), todo_cmp);
-
-                    /* add them to ret */
-                    for (auto& todo: todos) {
-                        ret += todo.complete?"\u2611  ":"\u2610  ";
-                        if (todo.id.length() < 2) ret += " ";
-                        ret += todo.id + "  " + todo.raw_date + "  " + todo.todo + "\n";
+                                /* write the buffer and change [complete] at the same time */
+                                fstream todo_file_out("myfiles/todolist/" + todo.unique_id + ".txt", ios::out);
+                                todo_file_out << "1\n" << writeBuffer;
+                                todo_file_out.close();
+                            }
+                        }
+                        ret = "Marked all incomplete as complete ヾ(≧▽≦*)o";
                     }
-                    ret += "```";
+                    /* specified id */
+                    else {
+                        vector<int> ids = id_parser(id);
+                        if (ids[0] != -1) {
+                            ret = "Marked ";
+                            for(auto& i: ids){
+                                fstream todo_file_in("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::in);
+                                string writeBuffer, lineBuffer;
+                                getline(todo_file_in, lineBuffer);
+                                while (getline(todo_file_in, lineBuffer)) {
+                                    writeBuffer += lineBuffer + '\n';
+                                }
+                                todo_file_in.close();
+
+                                /* write the buffer and change [complete] at the same time */
+                                fstream todo_file_out("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::out);
+                                todo_file_out << "1\n" << writeBuffer;
+                                todo_file_out.close();
+
+                                ret += to_string(i) + ". ";
+                            }
+                            ret += "as complete ヾ(≧▽≦*)o";
+                        }
+                        else {
+                            ret = "invalid id (´。＿。｀)";
+                        }
+                    }
                     event.reply(ret);
                 }
-                else{
-                    event.reply("```No any todos! (/≧▽≦)/```");
-                }
-            }
-
-            else if (subcommand.name == "complete") {
-                string id = get<string>(event.get_parameter("id"));
-
-                /* use buffer to contain the data */
-                fstream todo_file_in("myfiles/todolist/" + id + ".txt", ios::in);
-                string writeBuffer, lineBuffer;
-                getline(todo_file_in, lineBuffer);
-                while (getline(todo_file_in, lineBuffer)) {
-                    writeBuffer += lineBuffer + '\n';
-                }
-                todo_file_in.close();
-
-                /* write the buffer and change [complete] at the same time */
-                fstream todo_file_out("myfiles/todolist/" + id + ".txt", ios::out);
-                todo_file_out << "1\n" << writeBuffer;
-                todo_file_out.close();
-                event.reply("Marked `" + id + "` as complete ヾ(≧▽≦*)o");
             }
 
             else if (subcommand.name == "incomplete") {
-                string id = get<string>(event.get_parameter("id"));
+                if(!todo_ls_used) event.reply("Please list all todos first.");
+                else {
+                    string id = get<string>(event.get_parameter("id")), ret;
+                    todo_ls_used = false;
+                    /* all completes */
+                    if (id == "c") {
+                        for(auto& todo: todos){
+                            if (todo.complete) {
+                                /* use buffer to contain the data */
+                                fstream todo_file_in("myfiles/todolist/" + todo.unique_id + ".txt", ios::in);
+                                string writeBuffer, lineBuffer;
+                                getline(todo_file_in, lineBuffer);
+                                while (getline(todo_file_in, lineBuffer)) {
+                                    writeBuffer += lineBuffer + '\n';
+                                }
+                                todo_file_in.close();
 
-                fstream todo_file_in("myfiles/todolist/" + id + ".txt", ios::in);
-                string writeBuffer, lineBuffer;
-                getline(todo_file_in, lineBuffer);
-                while (getline(todo_file_in, lineBuffer)) {
-                    writeBuffer += lineBuffer + '\n';
+                                /* write the buffer and change [complete] at the same time */
+                                fstream todo_file_out("myfiles/todolist/" + todo.unique_id + ".txt", ios::out);
+                                todo_file_out << "0\n" << writeBuffer;
+                                todo_file_out.close();
+                            }
+                        }
+                        ret = "Marked all complete as incomplete ~(>_<。)\\";
+                    }
+                    /* specified id */
+                    else {
+                        vector<int> ids = id_parser(id);
+                        if (ids[0] != -1) {
+                            ret = "Marked ";
+                            for(auto& i: ids){
+                                fstream todo_file_in("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::in);
+                                string writeBuffer, lineBuffer;
+                                getline(todo_file_in, lineBuffer);
+                                while (getline(todo_file_in, lineBuffer)) {
+                                    writeBuffer += lineBuffer + '\n';
+                                }
+                                todo_file_in.close();
+
+                                /* write the buffer and change [complete] at the same time */
+                                fstream todo_file_out("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::out);
+                                todo_file_out << "0\n" << writeBuffer;
+                                todo_file_out.close();
+
+                                ret += to_string(i) + ". ";
+                            }
+                            ret += "s incomplete ~(>_<。)\\";
+                        }
+                        else {
+                            ret = "invalid id (´。＿。｀)";
+                        }
+                    }
+                    event.reply(ret);
                 }
-                todo_file_in.close();
-
-                fstream todo_file_out("myfiles/todolist/" + id + ".txt", ios::out);
-                todo_file_out << "0\n" << writeBuffer;
-                todo_file_out.close();
-                event.reply("Marked `" + id + "` as incomplete ~(>_<。)\\");
             }
         }
 
@@ -742,16 +937,16 @@ int main(int argc, char const *argv[]) {
 
             if(is_valid_date(date)) {
                 /* update todo_id and save it */
-                todo_id++;
-                fstream id_file("myfiles/todolist/id.txt", ios::out);
-                id_file << todo_id;
+                todo_unique_id++;
+                fstream id_file("myfiles/todolist/unique_id.txt", ios::out);
+                id_file << todo_unique_id;
                 id_file.close();
-                fstream todo_add("myfiles/todolist/" + to_string(todo_id) + ".txt", ios::out);
-                todo_add << "0\n" << todo_id << '\n' << date << '\n' << todo << '\n';
+                fstream todo_add("myfiles/todolist/" + to_string(todo_unique_id) + ".txt", ios::out);
+                todo_add << "0\n" << todo_unique_id << '\n' << date << '\n' << todo << '\n';
                 todo_add.close();
 
                 dpp::message m;
-                m.set_content("Date: " + date + "\nTODO: " + todo + "\nid:\n" + to_string(todo_id)).set_flags(dpp::m_ephemeral);
+                m.set_content("Date: " + date + "\nToDo: " + todo).set_flags(dpp::m_ephemeral);
                 event.reply(m);
             }
             else event.reply("[TODO] date is invalid");
