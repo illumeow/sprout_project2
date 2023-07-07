@@ -1,0 +1,3 @@
+/src/mainbot/build/CMakeFiles/rebuild_cache.dir
+/src/mainbot/build/CMakeFiles/edit_cache.dir
+/src/mainbot/build/CMakeFiles/mainbot.dir
