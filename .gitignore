@@ -2,4 +2,5 @@ DPP/
 testbot/
 .vscode/
 
+mainbot/build/mainbot
 mainbot/include/config.h
