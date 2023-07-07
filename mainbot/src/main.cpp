@@ -182,10 +182,11 @@ int main(int argc, char const *argv[]) {
     cout << "todo unique_id: " << todo_unique_id << '\n';
 
     /* jokes initialize */
-    fstream joke_file("myfiles/joke.txt", ios::in);
+    fstream joke_file("myfiles/jokes.txt", ios::in);
     string line;
     while (getline(joke_file, line)) jokes.push_back(line);
     joke_file.close();
+    cout << "Jokes count: " << jokes.size() << '\n';
 
     /* Handle slash command */
     bot.on_slashcommand([&](const dpp::slashcommand_t& event) {
@@ -843,7 +844,7 @@ int main(int argc, char const *argv[]) {
 
             else if (subcommand.name == "add") {
                 string joke = get<string>(event.get_parameter("joke"));
-                fstream joke_file("myfiles/joke.txt", ios::app);
+                fstream joke_file("myfiles/jokes.txt", ios::app);
                 joke_file << joke << '\n';
                 joke_file.close();
                 event.reply("Joke added ㄟ(≧◇≦)ㄏ");
@@ -852,26 +853,27 @@ int main(int argc, char const *argv[]) {
             else if (subcommand.name == "remove") {
                 fstream joke_file;
 
-                joke_file.open("myfiles/joke.txt", ios::in);
+                joke_file.open("myfiles/jokes.txt", ios::in);
                 string writeBuffer, lineBuffer;
                 while (getline(joke_file, lineBuffer)) {
-                    if (lineBuffer != latest_joke) writeBuffer += lineBuffer;
+                    if (lineBuffer != latest_joke) writeBuffer += lineBuffer + '\n';
                 }
                 joke_file.close();
 
-                joke_file.open("myfiles/joke.txt", ios::out);
-                joke_file << writeBuffer << '\n';
+                joke_file.open("myfiles/jokes.txt", ios::out);
+                joke_file << writeBuffer;
                 joke_file.close();
 
                 event.reply("Removed joke: " + latest_joke);
             }
 
             else if (subcommand.name == "update") {
-                fstream joke_file("myfiles/joke.txt", ios::in);
+                fstream joke_file("myfiles/jokes.txt", ios::in);
                 string line;
                 jokes.clear();
                 while (getline(joke_file, line)) jokes.push_back(line);
                 joke_file.close();
+                cout << "Jokes count: " << jokes.size() << '\n';
                 event.reply("Jokes updated!");
             }
         }
