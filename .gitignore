@@ -5,4 +5,3 @@ testbot/
 mainbot/build/CMakeFiles/mainbot.dir/
 mainbot/build/mainbot
 mainbot/include/config.h
-mainbot/build/myfiles/diaries/*.txt
