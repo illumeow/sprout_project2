@@ -162,8 +162,31 @@ string get_random_joke() {
     return jokes[rand() % jokes.size()];
 }
 
+/* memes */
+vector<string> links1, links2;
+int menu;
+
 /* go wash dishes */
 int dishes_count = 0;
+
+/* SicBo */
+bool sicbo_started = false, sicbo_played = false,
+     someone_choosing = false;
+int goal_point = 10,
+    goal_roll_count = 10, roll_count,
+    dice,
+    player_chose = 0;
+dpp::snowflake user_start_sicbo(0), player_choosing;
+
+struct PlayerData{
+    dpp::snowflake user;
+    int choose, point;
+    string nickname;
+    PlayerData(dpp::snowflake user, string nickname):
+    user(user), choose(NON), point(0), nickname(nickname){};
+};
+
+vector<PlayerData> player_data;
 
 int main(int argc, char const *argv[]) {
     /* Setup the bot */
@@ -186,7 +209,16 @@ int main(int argc, char const *argv[]) {
     string line;
     while (getline(joke_file, line)) jokes.push_back(line);
     joke_file.close();
-    cout << "Jokes count: " << jokes.size() << '\n';
+
+    /* memes initialize */
+    string keyword, link;
+    fstream meme_file;
+    meme_file.open("myfiles/memes/memes1.txt", ios::in);
+    while (meme_file >> keyword >> link) links1.push_back(link);
+    meme_file.close();
+    meme_file.open("myfiles/memes/memes2.txt", ios::in);
+    while (meme_file >> keyword >> link) links2.push_back(link);
+    meme_file.close();
 
     /* Handle slash command */
     bot.on_slashcommand([&](const dpp::slashcommand_t& event) {
@@ -696,6 +728,8 @@ int main(int argc, char const *argv[]) {
             }
             
             else if (subcommand.name == "remove_all") {
+                todo_ls_used = false;
+
                 /* remove all todos and count (id.txt excluded)*/
                 int file_count = -1;
                 for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
@@ -831,6 +865,7 @@ int main(int argc, char const *argv[]) {
             }
         }
 
+        // ramdom joke
         else if (command_name == "joke") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "get") {
@@ -878,7 +913,76 @@ int main(int argc, char const *argv[]) {
             }
         }
 
-        else if (command_name == "go_washing_dishes") {
+        // memes
+        else if (command_name == "meme") {
+            auto subcommand = interaction.get_command_interaction().options[0];
+            if (subcommand.name == "get") {
+                string kw = get<string>(event.get_parameter("keyword"));
+                fstream meme_file;
+                string keyword, link;
+                bool replied = false;
+
+                meme_file.open("myfiles/memes/memes1.txt", ios::in);
+                while (meme_file >> keyword >> link) {
+                    if (keyword == kw) {
+                        replied = true;
+                        event.reply(link);
+                    }
+                }
+                meme_file.close();
+
+                meme_file.open("myfiles/memes/memes2.txt", ios::in);
+                while (meme_file >> keyword >> link) {
+                    if (keyword == kw) {
+                        replied = true;
+                        event.reply(link);
+                    }
+                }
+                meme_file.close();
+
+                if (!replied) {
+                    dpp::message m;
+                    m.set_content("可以去看list嗎(◞‸◟)");
+                    m.add_file("meme.jpg", dpp::utility::read_file("myfiles/memes/meme_not_exist.jpeg"));
+                    event.reply(m);
+                }
+            }
+
+            else if (subcommand.name == "ls1") {
+                menu = 1;
+                dpp::message m("meme keyword menu1");
+                m.set_flags(dpp::m_ephemeral);
+                dpp::component component = dpp::component().
+                    set_type(dpp::cot_selectmenu).
+                    set_placeholder("Pick keyword");
+                fstream meme_file("myfiles/memes/memes1.txt", ios::in);
+                string keyword, link;
+                int i = 0;
+                while (meme_file >> keyword >> link) component.add_select_option(dpp::select_option(keyword, to_string(i++)));   
+                meme_file.close();
+                m.add_component(dpp::component().add_component(component));
+                event.reply(m);
+            }
+
+            else if (subcommand.name == "ls2") {
+                menu = 2;
+                dpp::message m("meme keyword menu2");
+                m.set_flags(dpp::m_ephemeral);
+                dpp::component component = dpp::component().
+                    set_type(dpp::cot_selectmenu).
+                    set_placeholder("Pick keyword");
+                fstream meme_file("myfiles/memes/memes2.txt", ios::in);
+                string keyword, link;
+                int i = 0;
+                while (meme_file >> keyword >> link) component.add_select_option(dpp::select_option(keyword, to_string(i++)));   
+                meme_file.close();
+                m.add_component(dpp::component().add_component(component));
+                event.reply(m);
+            }
+        }
+
+        // go wash dishes
+        else if (command_name == "go_wash_dishes") {
             string ret;
             if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
             else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
@@ -889,6 +993,7 @@ int main(int argc, char const *argv[]) {
             event.reply(ret);
         }
 
+        // today in history
         else if (command_name == "today_in_history") {
             string date = get<string>(event.get_parameter("date"));
             if(is_valid_date("2000" + date)) {
@@ -909,6 +1014,239 @@ int main(int argc, char const *argv[]) {
                 event.reply("Invalid date!");
             }
         }
+    
+        // SicBo
+        else if (command_name == "sicbo") {
+            auto subcommand = interaction.get_command_interaction().options[0];
+            if (subcommand.name == "start") {
+                if (user_start_sicbo.empty()) {
+                    /* reset SicBo settings */
+                    sicbo_started = true;
+                    player_chose = 0;
+                    roll_count = 0;
+                    sicbo_played = false;
+                    player_data.clear();
+
+                    /* get the user who started SicBo */
+                    user_start_sicbo = interaction.get_issuing_user().id;
+                    
+                    event.reply("SicBo game started!");
+                }
+                else {
+                    event.reply("SicBo has been started by <@" + to_string(user_start_sicbo) + ">");
+                }
+            }
+
+            else if (subcommand.name == "join") {
+                if (sicbo_started) {
+                    bool joined = false;
+                    dpp::snowflake user = interaction.get_issuing_user().id;
+                    for(auto& player: player_data)
+                        if (user == player.user) joined = true;
+                    if (!joined) {
+                        string nickname = get<string>(event.get_parameter("nickname"));
+                        PlayerData player(user, nickname);
+                        player_data.push_back(player);
+                        event.reply("You have joined SicBo.");
+                    }
+                    else {
+                        event.reply("You've already joined SicBo.");
+                    }
+                }
+                else {
+                    event.reply("Please start a new SicBo game first.");
+                }
+            }
+
+            else if (subcommand.name == "leave") {
+                if (sicbo_started) {
+                    bool joined = false;
+                    dpp::snowflake user = interaction.get_issuing_user().id;
+                    for(auto& player: player_data)
+                        if (user == player.user) joined = true;
+                    if (joined) {
+                        for(auto it=player_data.begin(); it!=player_data.end();) {
+                            if ((*it).user == user) it = player_data.erase(it);
+                            else it++;
+                        }
+                        /* no any player */
+                        if (player_data.size() == 0) {
+                            sicbo_started = false;
+                            user_start_sicbo = 0;
+                            event.reply("SicBo game ended due to no players remaining.");
+                        }
+                        else {
+                            if (user == user_start_sicbo) {
+                                user_start_sicbo = player_data[0].user;
+                                event.reply("The Host has left, new host will be: <@" + to_string(user_start_sicbo) + ">");
+                            }
+                            else event.reply("You have left SicBo.");
+                        }
+                    }
+                    else {
+                        event.reply("You've already left SicBo.");
+                    }
+                }
+                else {
+                    event.reply("There is no game for you to leave.");
+                }
+            }
+
+            else if (subcommand.name == "choose") {
+                if (sicbo_started) {
+                    bool joined = false;
+                    dpp::snowflake user = interaction.get_issuing_user().id;
+                    for(auto& player: player_data)
+                        if (user == player.user) joined = true;
+                    if (joined) {
+                        if (someone_choosing) {
+                            dpp::message m("Someone is choosing, please wait.");
+                            m.set_flags(dpp::m_ephemeral);
+                            event.reply(m);
+                        }
+                        else {
+                            someone_choosing = true;
+                            player_choosing = interaction.get_issuing_user().id;
+                            dpp::message m("Choose big or small!");
+                            dpp::component buttons;
+                            buttons.add_component(dpp::component().
+                                set_label("Big").
+                                set_type(dpp::cot_button).
+                                set_style(dpp::cos_primary).
+                                set_id("big")
+                            );
+                            buttons.add_component(dpp::component().
+                                set_label("Small").
+                                set_type(dpp::cot_button).
+                                set_style(dpp::cos_success).
+                                set_id("small")
+                            );
+                            m.add_component(buttons);
+                            m.set_flags(dpp::m_ephemeral);
+                            event.reply(m);
+                        }
+                    }
+                    else {
+                        dpp::message m("You are not in a SicBo game.");
+                        m.set_flags(dpp::m_ephemeral);
+                        event.reply(m);
+                    }
+                }
+                else {
+                    dpp::message m("Please start a new SicBo game first.");
+                    m.set_flags(dpp::m_ephemeral);
+                    event.reply(m);
+                }
+            }
+
+            else if (subcommand.name == "reveal") {
+                if (sicbo_started) {
+                    dpp::snowflake user = interaction.get_issuing_user().id;
+                    if (user == user_start_sicbo) {
+                        if (player_chose != player_data.size()) event.reply("Someone hasn't pick a choice!");
+                        else {
+                            /* roll the dice */
+                            dice = rand() % 6 + 1;
+                            roll_count++;
+
+                            /* reveal */
+                            player_chose = 0;
+                            sicbo_played = true;
+                            string ret = "It's " + to_string(dice) + "! ";
+                            int result = dice>3?BIG:SMALL;
+                            ret += dice>3?"Those who have chosen [Big] get 1 point!":"Those who have chosen [Small] get 1 point!";
+                            
+                            int max_point = INT_MIN;
+                            for(auto& player: player_data) {
+                                if (player.choose == result) player.point++;
+                                if (player.point > max_point) max_point = player.point;
+                            }
+
+                            dpp::message m;
+
+                            /* auto end the game */
+                            if (max_point >= goal_point || roll_count >= goal_roll_count) {
+                                sicbo_started = false;
+                                user_start_sicbo = 0;
+                                ret += "\nThe game has ended because one of the ending conditions was met.";
+
+                                /* sort by point */
+                                std::sort(player_data.begin(), player_data.end(),
+                                [](const PlayerData& a, const PlayerData& b) {
+                                    return a.point > b.point;
+                                });
+
+                                dpp::embed embed = dpp::embed().
+                                    set_color(0xC99AFF).
+                                    set_title("SicBo Leaderboard");
+
+                                int cnt = 1;
+                                for(auto& player: player_data)
+                                    embed.add_field("#" + to_string(cnt++) + " " + player.nickname, "points: " + to_string(player.point));
+                                m.add_embed(embed);
+                            }
+                            m.set_content(ret);
+                            event.reply(m);
+                        }
+                    }
+                    else {
+                        dpp::message m("You are not who started the game.");
+                        m.set_flags(dpp::m_ephemeral);
+                        event.reply(m);
+                    }
+                }
+                else {
+                    dpp::message m("Please start a new SicBo game first.");
+                    m.set_flags(dpp::m_ephemeral);
+                    event.reply(m);
+                }
+            }
+
+            else if (subcommand.name == "end") {
+                if (sicbo_started) {
+                    dpp::snowflake user = interaction.get_issuing_user().id;
+                    if (user == user_start_sicbo) {
+                        sicbo_started = false;
+                        user_start_sicbo = 0;
+                        dpp::message m("SicBo game ended.");
+                        if (sicbo_played) {
+                            dpp::embed embed = dpp::embed().
+                                set_color(0xC99AFF).
+                                set_title("SicBo Leaderboard");
+
+                            int cnt = 1;
+                            for(auto& player: player_data)
+                                embed.add_field("#" + to_string(cnt++) + " " + player.nickname, "points: " + to_string(player.point));
+                            m.add_embed(embed);
+                        }
+                        
+                        event.reply(m);
+                    }
+                    else {
+                        dpp::message m("You are not who started the game.");
+                        m.set_flags(dpp::m_ephemeral);
+                        event.reply(m);
+                    }
+                }
+                else {
+                    dpp::message m("Please start a new SicBo game first.");
+                    m.set_flags(dpp::m_ephemeral);
+                    event.reply(m);
+                }
+            }
+
+            else if (subcommand.name == "set_goal_point") {
+                int64_t point = get<int64_t>(event.get_parameter("point"));
+                goal_point = point;
+                event.reply("Set goal point to `" + to_string(goal_point) + "`");
+            }
+
+            else if (subcommand.name == "set_goal_roll") {
+                int64_t roll = get<int64_t>(event.get_parameter("roll"));
+                goal_roll_count = roll;
+                event.reply("Set count of roll to `" + to_string(goal_roll_count) + "`");
+            }
+        }
     });
  
     /* This event handles form submission for the modal dialog created above */
@@ -927,8 +1265,8 @@ int main(int argc, char const *argv[]) {
                 diary_write.close();
 
                 /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
-                dpp::message m;
-                m.set_content("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content).set_flags(dpp::m_ephemeral);
+                dpp::message m("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content);
+                m.set_flags(dpp::m_ephemeral);
                 event.reply(m);
             }
             else event.reply("[Diary] date is invalid");
@@ -947,11 +1285,42 @@ int main(int argc, char const *argv[]) {
                 todo_add << "0\n" << todo_unique_id << '\n' << date << '\n' << todo << '\n';
                 todo_add.close();
 
-                dpp::message m;
-                m.set_content("Date: " + date + "\nToDo: " + todo).set_flags(dpp::m_ephemeral);
+                dpp::message m("Date: " + date + "\nToDo: " + todo);
+                m.set_flags(dpp::m_ephemeral);
                 event.reply(m);
             }
             else event.reply("[TODO] date is invalid");
+        }
+    });
+
+    bot.on_select_click([&bot](const dpp::select_click_t & event) {
+        if(menu == 1) event.reply(links1[stoi(event.values[0])]);
+        else if(menu == 2) event.reply(links2[stoi(event.values[0])]);
+    });
+
+    bot.on_button_click([&bot](const dpp::button_click_t & event) {
+        string button_id = event.custom_id;
+        if (button_id == "big" || button_id == "small") {
+            string ret;
+            if (button_id == "big") {
+                for(auto& player: player_data)
+                    if (player.user == player_choosing) player.choose = BIG;
+                ret = "Big";
+            }
+            else if (button_id == "small") {
+                for(auto& player: player_data)
+                    if (player.user == player_choosing) player.choose = SMALL;
+                 ret = "Small";
+            }
+            someone_choosing = false;
+            player_chose++;
+            if (player_chose == player_data.size()) ret += "\nEveryone had picked a choice, time to reveal!";
+            dpp::message m("You chose: " + ret);
+            m.set_flags(dpp::m_ephemeral);
+            event.reply(m);
+        }
+        else {
+            event.reply("You clicked: " + button_id);
         }
     });
 
@@ -1046,13 +1415,45 @@ int main(int argc, char const *argv[]) {
             joke.add_option(dpp::command_option(dpp::co_sub_command, "update", "Update the jokes"));
             bot.global_command_create(joke);
 
+            // memes
+            dpp::slashcommand meme("meme", "get a meme", bot.me.id);
+            meme.add_option(
+                dpp::command_option(dpp::co_sub_command, "get", "get a joke by keyword").
+                add_option(dpp::command_option(dpp::co_string, "keyword", "Enter a keyword", true))
+            );
+            meme.add_option(dpp::command_option(dpp::co_sub_command, "ls1", "Show the first keyword list"));
+            meme.add_option(dpp::command_option(dpp::co_sub_command, "ls2", "Show the second keyword list"));
+            bot.global_command_create(meme);
+
             // go wash dishes!
-            bot.global_command_create(dpp::slashcommand("go_washing_dishes", "command your slave~", bot.me.id));
+            bot.global_command_create(dpp::slashcommand("go_wash_dishes", "command your slave~", bot.me.id));
 
             // today in history
             dpp::slashcommand today_in_history("today_in_history", "today in history", bot.me.id);
             today_in_history.add_option(dpp::command_option(dpp::co_string, "date", "Please enter a date (MMDD)", true));
             bot.global_command_create(today_in_history);
+
+            // SicBo
+            dpp::slashcommand SicBo("sicbo", "SicBo game", bot.me.id);
+            SicBo.add_option(dpp::command_option(dpp::co_sub_command, "start", "Start a new game"));
+            SicBo.add_option(
+                dpp::command_option(dpp::co_sub_command, "join", "Join current game").
+                add_option(dpp::command_option(dpp::co_string, "nickname", "Enter your nickname", true))
+            );
+            SicBo.add_option(dpp::command_option(dpp::co_sub_command, "leave", "Leave current game"));
+            SicBo.add_option(dpp::command_option(dpp::co_sub_command, "choose", "Big or Small?"));
+            SicBo.add_option(dpp::command_option(dpp::co_sub_command, "reveal", "Reveal the result!"));
+            SicBo.add_option(dpp::command_option(dpp::co_sub_command, "end", "End the SicBo game"));
+            SicBo.add_option(
+                dpp::command_option(dpp::co_sub_command, "set_goal_point", "Set the goal point when SicBo end").
+                add_option(dpp::command_option(dpp::co_integer, "point", "Enter the goal point", true))
+            );
+            SicBo.add_option(
+                dpp::command_option(dpp::co_sub_command, "set_goal_roll", "Set the count of roll when SicBo end").
+                add_option(dpp::command_option(dpp::co_integer, "roll", "Enter the count of roll", true))
+            );
+            bot.global_command_create(SicBo);
+            bot.global_command_create(dpp::slashcommand("test1", "test command", bot.me.id));
         }
     });
 
