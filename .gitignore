@@ -2,5 +2,6 @@ DPP/
 testbot/
 .vscode/
 
+mainbot/build/CMakeFiles/mainbot.dir/
 mainbot/build/mainbot
 mainbot/include/config.h

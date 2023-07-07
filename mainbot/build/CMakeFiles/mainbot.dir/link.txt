@@ -1,1 +1,0 @@
-/usr/bin/c++     CMakeFiles/mainbot.dir/src/main.cpp.o  -o mainbot  -Wl,-rpath,/usr/local/lib -ldl -pthread /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/x86_64-linux-gnu/libssl.so /usr/local/lib/libdpp.so 
