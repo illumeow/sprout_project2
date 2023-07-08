@@ -56,7 +56,7 @@ struct PlayRecord{
 
 /* check if a string is a number */
 bool is_number(const string& s) {
-    string::const_iterator it = s.begin();
+    auto it = s.begin();
     while (it != s.end() && std::isdigit(*it)) ++it;
     return (it == s.end());
 }
@@ -71,7 +71,7 @@ bool is_repeated(const string& s) {
     return false;
 }
 
-/* TODO List */
+/* ToDo List */
 bool todo_ls_used = false;
 vector<string> encourage_words = {
     "Every noble work is at first impossible",
@@ -85,6 +85,7 @@ string get_random_words() {
     return encourage_words[rand() % encourage_words.size()];
 }
 
+/* split string by any delimiter (python str.split()) */
 vector<string> split(const string& s, const string& delimiter) {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     string token;
@@ -100,18 +101,19 @@ vector<string> split(const string& s, const string& delimiter) {
     return ret;
 }
 
+/* parse three kinds of id input and validation */
 vector<int> id_parser(const string& id) {
     vector<int> ret;
     vector<string> numbers;
 
     /* 1,3,4,6 */
-    if (id.find(',') != std::string::npos) {
+    if (id.find(',') != string::npos) {
         numbers = split(id, ",");
         for(auto& number: numbers)
             ret.push_back(stoi(number));
     }
     /* 3-5 */
-    else if (id.find('-') != std::string::npos) {
+    else if (id.find('-') != string::npos) {
         numbers = split(id, "-");
         int start = stoi(numbers[0]), end = stoi(numbers[1]);
         for(int i=start; i<=end; i++)
@@ -146,6 +148,7 @@ struct ToDo: public Date{
 
 vector<ToDo> todos;
 
+/* sort in chronological order */
 bool todo_cmp(const ToDo& a, const ToDo& b) {
     if (a.date.year != b.date.year)
         return a.date.year < b.date.year;
@@ -164,7 +167,7 @@ string get_random_joke() {
 
 /* memes */
 vector<string> links1, links2;
-int menu;
+int menu;  // ls1 or ls2
 
 /* go wash dishes */
 int dishes_count = 0;
@@ -198,7 +201,7 @@ int main(int argc, char const *argv[]) {
     /* Setup random seed */
     std::srand(time(0));
 
-    /* todo id initialize */
+    /* todo unique_id initialize */
     fstream todo_id_file("myfiles/todolist/unique_id.txt", ios::in);
     int todo_unique_id; todo_id_file >> todo_unique_id;
     todo_id_file.close();
@@ -261,7 +264,8 @@ int main(int argc, char const *argv[]) {
         else if (command_name == "reset") {
             /* set the answer in range [1, 100] */
             number_for_guess = rand() % 100 + 1;
-            std::cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
+            /* cout in console */
+            cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
             event.reply("[Guess Number] Reset Successful!");
         }
 
@@ -279,7 +283,7 @@ int main(int argc, char const *argv[]) {
                 ret = "Bingo!";
                 /* reset the answer if Bingo */
                 number_for_guess = rand() % 100 + 1;
-                std::cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
+                cout << "[Guess Number] New answer is: " << number_for_guess << '\n';
             }
             else if (num > number_for_guess) ret = "Guess a smaller number!";
             else ret = "Guess a larger number!";
@@ -334,26 +338,24 @@ int main(int argc, char const *argv[]) {
             fstream diary_read("myfiles/diaries/" + date + ".txt", ios::in);
             if (diary_read) {
                 string title, line, contents = "";
+                /* read title */
                 getline(diary_read, title);
+                /* read all contents (until EOF) */
+                cout << "lines:" << '\n';
                 while (!diary_read.eof()) {
                     getline(diary_read, line);
-                    cout << "line: " << line << '\n';
+                    cout << line << '\n';
                     contents += line;
                     contents += '\n';
                 }
-                cout << "contents: " << contents << '\n';
+                cout << "contents:\n" << contents << '\n';
+
                 /* create the embed then add it to dpp::message */
                 dpp::embed embed = dpp::embed().
                     set_color(dpp::colors::sti_blue).
                     set_title(title).
-                    add_field(
-                            "Date",
-                            date
-                    ).
-                    add_field(
-                            "Content",
-                            contents
-                    ).
+                    add_field("Date", date).
+                    add_field("Content", contents).
                     set_footer(dpp::embed_footer().set_text("My Diary at " + date)).
                     set_timestamp(time(0));
 
@@ -363,10 +365,8 @@ int main(int argc, char const *argv[]) {
                 m.add_embed(embed);
                 event.reply(m);
             }
-            else{
-                /* file not opened */
-                event.reply("Diary not found!!!!");
-            }
+            /* file not opened */
+            else event.reply("Diary not found!!!!");
         }
 
         /* task 4.3 */
@@ -378,13 +378,15 @@ int main(int argc, char const *argv[]) {
                 else ret = "Diary deletion failed :(";
             }
             catch (...) {
-                /* catch any */
+                /* catch any exception */
                 ret = "Diary deletion failed :(";
             }
             event.reply(ret);
         }
         
+
         /* custom things */
+        // List commands that are related to each other
         else if (command_name == "calculator") {
             event.reply("You can use these commands for calculator:\n`/add` `/sub` `/mul`");
         }
@@ -403,6 +405,7 @@ int main(int argc, char const *argv[]) {
                     abgame_answer.clear();
                     for (int i=0; i<10; i++) abgame_answer.push_back(-1);
                     bool chose[10] = {};
+                    /* cout the answer to console */
                     cout << "1A2B answer: ";
                     int n;
                     for (int i=0; i<4; i++) {
@@ -426,14 +429,14 @@ int main(int argc, char const *argv[]) {
                     event.reply("New game started!");
                 }
                 /* someone is playing */
-                else {
-                    event.reply("The game has been started.");
-                }
+                else event.reply("The game has been started.");
+                
             }
             
             else if (subcommand.name == "guess") {
-                string ret, guess = get<string>(event.get_parameter("number"));
+                string guess = get<string>(event.get_parameter("number")), ret;
                 dpp::snowflake user = interaction.get_issuing_user().id;
+                /* the game has started and other person is playing */
                 if(user != user_playing && !user_playing.empty()) event.reply("You aren't the user who started this game.");
                 else {
                     bool valid = true;
@@ -455,6 +458,7 @@ int main(int argc, char const *argv[]) {
                             /* record the number of guesses */
                             guess_count++;
                         }
+                        /* Bingo */
                         else{
                             ret = "Congrats! `" + guess + "` is the correct answer!\nYou used " + to_string(guess_count+1) + " guesses.\n";
                             
@@ -463,33 +467,36 @@ int main(int argc, char const *argv[]) {
                             /* if registered */
                             if (fs::exists("myfiles/1A2B/" + user_id + ".txt")) {
                                 fstream record;
+                                /* use buffer to contain the data */
                                 string username, best_play, play_count, writeBuffer;
                                 record.open("myfiles/1A2B/" + user_id + ".txt", ios::in);
                                 record >> username >> best_play >> play_count;
                                 record.close();
+                                /* first play */
                                 if (best_play == "N/A") {
                                     ret += "Best Play Updated!";
                                     writeBuffer +=  username + ' ' + to_string(guess_count+1) + " 1";
                                 }
                                 else {
+                                    /* update best play and play count */
                                     if(guess_count+1 < stoi(best_play)) {
                                         ret += "Best Play Updated!";
                                         writeBuffer +=  username + ' ' + to_string(guess_count+1) + ' ' + to_string(stoi(play_count)+1);
                                     }
+                                    /* only update play count */
                                     else {
                                         ret += "Good luck on next game!";
                                         writeBuffer +=  username + ' ' + best_play + ' ' + to_string(stoi(play_count)+1);
                                     }
                                 }
+                                /* save the record */
                                 record.open("myfiles/1A2B/" + user_id + ".txt", ios::out);
                                 record << writeBuffer;
                                 record.close();
                             }
                             /* anonymous user */
-                            else {
-                                ret += "This game isn't record because you haven't register yet.";
-                            }
-
+                            else ret += "This game isn't record because you haven't register yet.";
+                            
                             /* reset when Bingo */
                             abgame_started = false;
                             guess_count = 0;
@@ -502,6 +509,7 @@ int main(int argc, char const *argv[]) {
             
             else if (subcommand.name == "quit") {
                 dpp::snowflake user = interaction.get_issuing_user().id;
+                /* the game has started and other person is playing */
                 if(user != user_playing && !user_playing.empty()) event.reply("You aren't the user who started this game.");
                 else {
                     /* reset */
@@ -559,11 +567,11 @@ int main(int argc, char const *argv[]) {
                             return a.best_play_int < b.best_play_int;
                         });
 
-                /* add them to embed */
+                /* initialize embed */
                 dpp::embed embed = dpp::embed().
                     set_color(0xFFA5CE).
                     set_title("1A2B Scoreboard");
-
+                /* add the records to embed */
                 for(auto& record: records)
                     embed.add_field(record.username, "best play: " + record.best_play + "\nplay count: " + record.play_count);    
 
@@ -585,7 +593,7 @@ int main(int argc, char const *argv[]) {
             }
         }
 
-        // TODO List
+        // ToDo List
         else if (command_name == "todo") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "add") {
@@ -604,7 +612,7 @@ int main(int argc, char const *argv[]) {
                 modal.add_row();
                 modal.add_component(
                     dpp::component().
-                    set_label("TODO").
+                    set_label("ToDo").
                     set_id("todo").
                     set_type(dpp::cot_text).
                     set_placeholder("enter your todo here").
@@ -639,32 +647,31 @@ int main(int argc, char const *argv[]) {
                     count++;
                 }
 
+                /* initialize embed */
                 dpp::embed embed = dpp::embed().
                     set_color(0xF4A0A0).
-                    set_title("TODO List").
+                    set_title("ToDo List").
                     set_description(get_random_words());
 
+                /* at least one todo in list */
                 if (count) {
                     /* sort in chronological order */
                     std::sort(todos.begin(), todos.end(), todo_cmp);
 
-                    /* add them to ret */
+                    /* add todos to embed */
                     int id = 1;
                     for (auto& todo: todos) {
                         string field_name = "", field_value = "- ";
+                        /* checked: 2611, unchecked: 2610 */
                         field_name += todo.complete?"\u2611   ":"\u2610   ";
+                        /* make it 1. 2. 3. 4. ... */
                         field_name += to_string(id++) + ". " + todo.todo;
                         field_value += todo.raw_date;
                         embed.add_field(field_name, field_value);
                     }
                 }
-                else{
-                    embed.add_field(
-                        "No any todos! (/≧▽≦)/",
-                        ""
-                    );
-                }
-
+                else embed.add_field("No any todos! (/≧▽≦)/", "");
+                
                 dpp::message m;
                 m.add_embed(embed);
                 event.reply(m);
@@ -705,9 +712,11 @@ int main(int argc, char const *argv[]) {
                     }
                     /* specified id */
                     else {
+                        /* parse the ids */
                         vector<int> ids = id_parser(id);
                         if (ids[0] != -1) {
                             ret = "Removed ";
+                            /* use the ids to delete file */
                             for(auto& i: ids){
                                 try {
                                     fs::remove("myfiles/todolist/" + todos[i-1].unique_id + ".txt");
@@ -719,28 +728,28 @@ int main(int argc, char const *argv[]) {
                             }
                             ret += "( •̀ ω •́ )✧";
                         }
-                        else {
-                            ret = "invalid id (´。＿。｀)";
-                        }
+                        else ret = "invalid id (´。＿。｀)";
+                        
                     }
                     event.reply(ret);
                 }
             }
             
             else if (subcommand.name == "remove_all") {
+                /* force the user to use [/todo ls] again */
                 todo_ls_used = false;
 
-                /* remove all todos and count (id.txt excluded)*/
+                /* remove all todos and count (unique_id.txt excluded)*/
                 int file_count = -1;
                 for (const auto& entry: fs::directory_iterator("myfiles/todolist/")) {
                     fs::remove(entry.path());
                     file_count++;
                 }
 
-                /* reset todo id */
-                fstream id_file("myfiles/todolist/unique_id.txt", ios::out);
-                id_file << "0";
-                id_file.close();
+                /* reset todo unique_id */
+                fstream todo_id_file("myfiles/todolist/unique_id.txt", ios::out);
+                todo_id_file << "0";
+                todo_id_file.close();
                 todo_unique_id = 0;
 
                 if (file_count) {
@@ -782,6 +791,7 @@ int main(int argc, char const *argv[]) {
                         if (ids[0] != -1) {
                             ret = "Marked ";
                             for(auto& i: ids){
+                                /* use buffer to contain the data */
                                 fstream todo_file_in("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::in);
                                 string writeBuffer, lineBuffer;
                                 getline(todo_file_in, lineBuffer);
@@ -799,9 +809,7 @@ int main(int argc, char const *argv[]) {
                             }
                             ret += "as complete ヾ(≧▽≦*)o";
                         }
-                        else {
-                            ret = "invalid id (´。＿。｀)";
-                        }
+                        else ret = "invalid id (´。＿。｀)";
                     }
                     event.reply(ret);
                 }
@@ -839,6 +847,7 @@ int main(int argc, char const *argv[]) {
                         if (ids[0] != -1) {
                             ret = "Marked ";
                             for(auto& i: ids){
+                                /* use buffer to contain the data */
                                 fstream todo_file_in("myfiles/todolist/" + todos[i-1].unique_id + ".txt", ios::in);
                                 string writeBuffer, lineBuffer;
                                 getline(todo_file_in, lineBuffer);
@@ -854,11 +863,10 @@ int main(int argc, char const *argv[]) {
 
                                 ret += to_string(i) + ". ";
                             }
-                            ret += "s incomplete ~(>_<。)\\";
+                            ret += "as incomplete ~(>_<。)\\";
                         }
-                        else {
-                            ret = "invalid id (´。＿。｀)";
-                        }
+                        else ret = "invalid id (´。＿。｀)";
+                        
                     }
                     event.reply(ret);
                 }
@@ -870,6 +878,7 @@ int main(int argc, char const *argv[]) {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "get") {
                 string joke;
+                /* prevent duplicate joke in two command calls */
                 do {
                     joke = get_random_joke();
                 } while (joke == latest_joke);
@@ -908,6 +917,7 @@ int main(int argc, char const *argv[]) {
                 jokes.clear();
                 while (getline(joke_file, line)) jokes.push_back(line);
                 joke_file.close();
+                /* cout jokes count to console */
                 cout << "Jokes count: " << jokes.size() << '\n';
                 event.reply("Jokes updated!");
             }
@@ -922,6 +932,7 @@ int main(int argc, char const *argv[]) {
                 string keyword, link;
                 bool replied = false;
 
+                /* fins the keyword in two files*/
                 meme_file.open("myfiles/memes/memes1.txt", ios::in);
                 while (meme_file >> keyword >> link) {
                     if (keyword == kw) {
@@ -940,9 +951,9 @@ int main(int argc, char const *argv[]) {
                 }
                 meme_file.close();
 
+                /* keyword not found */
                 if (!replied) {
-                    dpp::message m;
-                    m.set_content("可以去看list嗎(◞‸◟)");
+                    dpp::message m("可以去看list嗎(◞‸◟)");
                     m.add_file("meme.jpg", dpp::utility::read_file("myfiles/memes/meme_not_exist.jpeg"));
                     event.reply(m);
                 }
@@ -950,21 +961,27 @@ int main(int argc, char const *argv[]) {
 
             else if (subcommand.name == "ls1") {
                 menu = 1;
+
+                /* initialize message object */
                 dpp::message m("meme keyword menu1");
                 m.set_flags(dpp::m_ephemeral);
                 dpp::component component = dpp::component().
                     set_type(dpp::cot_selectmenu).
                     set_placeholder("Pick keyword");
+
+                /* construct select menu */
                 fstream meme_file("myfiles/memes/memes1.txt", ios::in);
                 string keyword, link;
                 int i = 0;
                 while (meme_file >> keyword >> link) component.add_select_option(dpp::select_option(keyword, to_string(i++)));   
                 meme_file.close();
                 m.add_component(dpp::component().add_component(component));
+
                 event.reply(m);
             }
 
             else if (subcommand.name == "ls2") {
+                /* same as above */
                 menu = 2;
                 dpp::message m("meme keyword menu2");
                 m.set_flags(dpp::m_ephemeral);
@@ -984,12 +1001,15 @@ int main(int argc, char const *argv[]) {
         // go wash dishes
         else if (command_name == "go_wash_dishes") {
             string ret;
+
+            /*  four times a cycle*/
             if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
             else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
             else if (dishes_count == 2) ret = "你一直講煩不煩啊 (｡ŏ_ŏ)";
             else ret = "小心我宰了你喔 (╬ﾟдﾟ)▄︻┻┳═一";
             dishes_count++;
             if (dishes_count == 4) dishes_count = 0;
+
             event.reply(ret);
         }
 
@@ -1002,23 +1022,21 @@ int main(int argc, char const *argv[]) {
                     string line;
                     getline(today_in_history, line);
                     today_in_history.close();
-
-                    dpp::embed embed = dpp::embed().set_title(line);
                     
                     dpp::message m;
-                    m.add_embed(embed);
+                    m.add_embed(dpp::embed().set_title(line));
                     event.reply(m);
                 }
+                else event.reply("today_in_history open fail");
             }
-			else {
-                event.reply("Invalid date!");
-            }
+			else event.reply("Invalid date!");
         }
     
         // SicBo
         else if (command_name == "sicbo") {
             auto subcommand = interaction.get_command_interaction().options[0];
             if (subcommand.name == "start") {
+                /* the game isn't started */
                 if (user_start_sicbo.empty()) {
                     /* reset SicBo settings */
                     sicbo_started = true;
@@ -1033,7 +1051,9 @@ int main(int argc, char const *argv[]) {
                     event.reply("SicBo game started!");
                 }
                 else {
-                    event.reply("SicBo has been started by <@" + to_string(user_start_sicbo) + ">");
+                    dpp::message m("SicBo has been started by <@" + to_string(user_start_sicbo) + ">");
+                    m.set_flags(dpp::m_ephemeral);
+                    event.reply(m);
                 }
             }
 
@@ -1041,8 +1061,11 @@ int main(int argc, char const *argv[]) {
                 if (sicbo_started) {
                     bool joined = false;
                     dpp::snowflake user = interaction.get_issuing_user().id;
+                    
+                    /* check if user had joined */
                     for(auto& player: player_data)
                         if (user == player.user) joined = true;
+                    
                     if (!joined) {
                         string nickname = get<string>(event.get_parameter("nickname"));
                         PlayerData player(user, nickname);
@@ -1050,33 +1073,38 @@ int main(int argc, char const *argv[]) {
                         event.reply("You have joined SicBo.");
                     }
                     else {
-                        event.reply("You've already joined SicBo.");
+                        dpp::message m("You've already joined SicBo.");
+                        m.set_flags(dpp::m_ephemeral);
+                        event.reply(m);
                     }
                 }
-                else {
-                    event.reply("Please start a new SicBo game first.");
-                }
+                else event.reply("Please start a new SicBo game first.");
             }
 
             else if (subcommand.name == "leave") {
                 if (sicbo_started) {
                     bool joined = false;
                     dpp::snowflake user = interaction.get_issuing_user().id;
+
                     for(auto& player: player_data)
                         if (user == player.user) joined = true;
+
                     if (joined) {
+                        /* erase the data from vector */
                         for(auto it=player_data.begin(); it!=player_data.end();) {
                             if ((*it).user == user) it = player_data.erase(it);
                             else it++;
                         }
-                        /* no any player */
+                        /* no players remaining */
                         if (player_data.size() == 0) {
                             sicbo_started = false;
                             user_start_sicbo = 0;
                             event.reply("SicBo game ended due to no players remaining.");
                         }
                         else {
+                            /* the host had left */
                             if (user == user_start_sicbo) {
+                                /* assign the host to the player who joined first before the host */
                                 user_start_sicbo = player_data[0].user;
                                 event.reply("The Host has left, new host will be: <@" + to_string(user_start_sicbo) + ">");
                             }
@@ -1084,20 +1112,22 @@ int main(int argc, char const *argv[]) {
                         }
                     }
                     else {
-                        event.reply("You've already left SicBo.");
+                        dpp::message m("You've already left SicBo.");
+                        m.set_flags(dpp::m_ephemeral);
+                        event.reply(m);
                     }
                 }
-                else {
-                    event.reply("There is no game for you to leave.");
-                }
+                else event.reply("There is no game for you to leave.");
             }
 
             else if (subcommand.name == "choose") {
                 if (sicbo_started) {
                     bool joined = false;
                     dpp::snowflake user = interaction.get_issuing_user().id;
+
                     for(auto& player: player_data)
                         if (user == player.user) joined = true;
+
                     if (joined) {
                         if (someone_choosing) {
                             dpp::message m("Someone is choosing, please wait.");
@@ -1105,8 +1135,12 @@ int main(int argc, char const *argv[]) {
                             event.reply(m);
                         }
                         else {
+                            /* make others can't choose */
                             someone_choosing = true;
+
                             player_choosing = interaction.get_issuing_user().id;
+
+                            /* construct buttons */
                             dpp::message m("Choose big or small!");
                             dpp::component buttons;
                             buttons.add_component(dpp::component().
@@ -1176,13 +1210,16 @@ int main(int argc, char const *argv[]) {
                                     return a.point > b.point;
                                 });
 
+                                /* initialize embed */
                                 dpp::embed embed = dpp::embed().
                                     set_color(0xC99AFF).
                                     set_title("SicBo Leaderboard");
 
+                                /* add players' data and rank */
                                 int cnt = 1;
                                 for(auto& player: player_data)
                                     embed.add_field("#" + to_string(cnt++) + " " + player.nickname, "points: " + to_string(player.point));
+                                
                                 m.add_embed(embed);
                             }
                             m.set_content(ret);
@@ -1209,6 +1246,8 @@ int main(int argc, char const *argv[]) {
                         sicbo_started = false;
                         user_start_sicbo = 0;
                         dpp::message m("SicBo game ended.");
+
+                        /* show leaderboard if the game had been played */
                         if (sicbo_played) {
                             dpp::embed embed = dpp::embed().
                                 set_color(0xC99AFF).
@@ -1219,7 +1258,6 @@ int main(int argc, char const *argv[]) {
                                 embed.add_field("#" + to_string(cnt++) + " " + player.nickname, "points: " + to_string(player.point));
                             m.add_embed(embed);
                         }
-                        
                         event.reply(m);
                     }
                     else {
@@ -1235,6 +1273,7 @@ int main(int argc, char const *argv[]) {
                 }
             }
 
+            /* set ending conditions */
             else if (subcommand.name == "set_goal_point") {
                 int64_t point = get<int64_t>(event.get_parameter("point"));
                 goal_point = point;
@@ -1259,12 +1298,12 @@ int main(int argc, char const *argv[]) {
             string diary_content = get<string>(event.components[2].components[0].value);
 
             if(is_valid_date(date)) {
-                 /* save it */
+                /* save it */
                 fstream diary_write("myfiles/diaries/" + date + ".txt", ios::out);
                 diary_write << title << '\n' << diary_content;
                 diary_write.close();
 
-                /* Emit a reply. Form submission is still an interaction and must generate some form of reply! */
+                /* reply what the user wrote */
                 dpp::message m("Date: " + date + "\nTitle: " + title + "\nContent:\n" + diary_content);
                 m.set_flags(dpp::m_ephemeral);
                 event.reply(m);
@@ -1276,28 +1315,33 @@ int main(int argc, char const *argv[]) {
             string todo = get<string>(event.components[1].components[0].value);
 
             if(is_valid_date(date)) {
-                /* update todo_id and save it */
+                /* update todo_unique_id and save it */
                 todo_unique_id++;
                 fstream id_file("myfiles/todolist/unique_id.txt", ios::out);
                 id_file << todo_unique_id;
                 id_file.close();
+
+                /* save the todo */
                 fstream todo_add("myfiles/todolist/" + to_string(todo_unique_id) + ".txt", ios::out);
                 todo_add << "0\n" << todo_unique_id << '\n' << date << '\n' << todo << '\n';
                 todo_add.close();
 
+                /* reply what the user wrote */
                 dpp::message m("Date: " + date + "\nToDo: " + todo);
                 m.set_flags(dpp::m_ephemeral);
                 event.reply(m);
             }
-            else event.reply("[TODO] date is invalid");
+            else event.reply("[ToDo] date is invalid");
         }
     });
 
+    /* handle the reply of select menu (meme ls)*/
     bot.on_select_click([&bot](const dpp::select_click_t & event) {
         if(menu == 1) event.reply(links1[stoi(event.values[0])]);
         else if(menu == 2) event.reply(links2[stoi(event.values[0])]);
     });
 
+    /* handle the reply of button (sicbo choose) */
     bot.on_button_click([&bot](const dpp::button_click_t & event) {
         string button_id = event.custom_id;
         if (button_id == "big" || button_id == "small") {
@@ -1310,18 +1354,21 @@ int main(int argc, char const *argv[]) {
             else if (button_id == "small") {
                 for(auto& player: player_data)
                     if (player.user == player_choosing) player.choose = SMALL;
-                 ret = "Small";
+                ret = "Small";
             }
+
+            /* make others can choose */
             someone_choosing = false;
+
+            /* remind the last player that all players have already made a choice */
             player_chose++;
             if (player_chose == player_data.size()) ret += "\nEveryone had picked a choice, time to reveal!";
+            
             dpp::message m("You chose: " + ret);
             m.set_flags(dpp::m_ephemeral);
             event.reply(m);
         }
-        else {
-            event.reply("You clicked: " + button_id);
-        }
+        else event.reply("this is a invalid button.");
     });
 
     bot.on_ready([&bot](const dpp::ready_t& event) {
@@ -1365,8 +1412,8 @@ int main(int argc, char const *argv[]) {
             bot.global_command_create(remove);
 
             /* custom things */
+            // List commands that are related to each other
             bot.global_command_create(dpp::slashcommand("calculator", "List commands of calculator", bot.me.id));
-
             bot.global_command_create(dpp::slashcommand("diary", "List command of diary", bot.me.id));
 
             // 1A2B
@@ -1385,8 +1432,8 @@ int main(int argc, char const *argv[]) {
             abgame.add_option(dpp::command_option(dpp::co_sub_command, "delete", "Delete your play record"));
             bot.global_command_create(abgame);
 
-            // TODO List
-            dpp::slashcommand todo("todo", "TODO List", bot.me.id);
+            // ToDo List
+            dpp::slashcommand todo("todo", "ToDo List", bot.me.id);
             todo.add_option(dpp::command_option(dpp::co_sub_command, "add", "Add a new todo"));
             todo.add_option(
                 dpp::command_option(dpp::co_sub_command, "remove", "Remove a todo").
@@ -1416,9 +1463,9 @@ int main(int argc, char const *argv[]) {
             bot.global_command_create(joke);
 
             // memes
-            dpp::slashcommand meme("meme", "get a meme", bot.me.id);
+            dpp::slashcommand meme("meme", "Get a meme", bot.me.id);
             meme.add_option(
-                dpp::command_option(dpp::co_sub_command, "get", "get a joke by keyword").
+                dpp::command_option(dpp::co_sub_command, "get", "Get a joke by keyword").
                 add_option(dpp::command_option(dpp::co_string, "keyword", "Enter a keyword", true))
             );
             meme.add_option(dpp::command_option(dpp::co_sub_command, "ls1", "Show the first keyword list"));
@@ -1429,7 +1476,7 @@ int main(int argc, char const *argv[]) {
             bot.global_command_create(dpp::slashcommand("go_wash_dishes", "command your slave~", bot.me.id));
 
             // today in history
-            dpp::slashcommand today_in_history("today_in_history", "today in history", bot.me.id);
+            dpp::slashcommand today_in_history("today_in_history", "What had happened in today's history?", bot.me.id);
             today_in_history.add_option(dpp::command_option(dpp::co_string, "date", "Please enter a date (MMDD)", true));
             bot.global_command_create(today_in_history);
 
@@ -1453,7 +1500,6 @@ int main(int argc, char const *argv[]) {
                 add_option(dpp::command_option(dpp::co_integer, "roll", "Enter the count of roll", true))
             );
             bot.global_command_create(SicBo);
-            bot.global_command_create(dpp::slashcommand("test1", "test command", bot.me.id));
         }
     });
 
