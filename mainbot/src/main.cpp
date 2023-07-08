@@ -171,6 +171,7 @@ int menu;  // ls1 or ls2
 
 /* go wash dishes */
 int dishes_count = 0;
+bool ruby_is_master = false;
 
 /* SicBo */
 bool sicbo_started = false, sicbo_played = false,
@@ -1001,17 +1002,43 @@ int main(int argc, char const *argv[]) {
         // go wash dishes
         else if (command_name == "go_wash_dishes") {
             string ret;
-
-            /*  four times a cycle*/
-            if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
-            else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
-            else if (dishes_count == 2) ret = "你一直講煩不煩啊 (｡ŏ_ŏ)";
-            else ret = "小心我宰了你喔 (╬ﾟдﾟ)▄︻┻┳═一";
-            dishes_count++;
-            if (dishes_count == 4) dishes_count = 0;
-
+            if (ruby_is_master) {
+                if (interaction.get_issuing_user().id == dpp::snowflake(471217242835779585)) {
+                    if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
+                    else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
+                    else if (dishes_count == 2) ret = "你一直講煩不煩啊 (｡ŏ_ŏ)";
+                    else ret = "小心我宰了你喔 (╬ﾟдﾟ)▄︻┻┳═一";
+                    dishes_count++;
+                    if (dishes_count == 4) dishes_count = 0;
+                }
+                else ret = "你不是我的主人 ╰（‵□′）╯";
+            }
+            else {
+                /*  four times a cycle*/
+                if (dishes_count == 0) ret = "好的，主人~~ ε٩(๑> ₃ <)۶з";
+                else if (dishes_count == 1) ret = "好啦我去我去~ (๑¯∀¯๑)";
+                else if (dishes_count == 2) ret = "你一直講煩不煩啊 (｡ŏ_ŏ)";
+                else ret = "小心我宰了你喔 (╬ﾟдﾟ)▄︻┻┳═一";
+                dishes_count++;
+                if (dishes_count == 4) dishes_count = 0;
+            }
             event.reply(ret);
         }
+
+        else if (command_name == "master_ruby") {
+            string ret;
+            if (ruby_is_master) {
+                ruby_is_master = false;
+                ret = "Master is now everyone.";
+            }
+            else {
+                ruby_is_master = true;
+                ret = "Set master to Ruby Ku";
+            }
+            dishes_count = 0;
+            event.reply(ret);
+        }
+
 
         // today in history
         else if (command_name == "today_in_history") {
@@ -1474,6 +1501,7 @@ int main(int argc, char const *argv[]) {
 
             // go wash dishes!
             bot.global_command_create(dpp::slashcommand("go_wash_dishes", "command your slave~", bot.me.id));
+            bot.global_command_create(dpp::slashcommand("master_ruby", "Only Ruby Ku is master.", bot.me.id));
 
             // today in history
             dpp::slashcommand today_in_history("today_in_history", "What had happened in today's history?", bot.me.id);
